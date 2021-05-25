@@ -13,6 +13,7 @@
     "typescript": "^4.2.4"
   },
   "dependencies": {
+    "@balancer-labs/v2-helpers": "file:./balancer-core-v2/pvt/helpers",
     "bignumber.js": "^9.0.1"
   }
 }
