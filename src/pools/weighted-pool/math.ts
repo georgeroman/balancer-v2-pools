@@ -1,14 +1,19 @@
 // Ported from Solidity:
 // https://github.com/balancer-labs/balancer-core-v2/blob/70843e6a61ad11208c1cfabf5cfe15be216ca8d3/pkg/pool-weighted/contracts/WeightedMath.sol
 
-// The following edits have been made:
-// * the swap fee is added to the swap functions - `exactTokenInForTokenOut` and `tokenInForExactTokenOut`
-//   (in Solidity, the fees are charged outside)
-
 import BigNumber from "../../utils/big-number";
 import * as fp from "../../utils/math/fixed-point";
 
-export function invariant(
+// Swap limits: amounts swapped may not be larger than this percentage of total balance
+const MAX_IN_RATIO = new BigNumber("300000000000000000"); // 0.3e18
+const MAX_OUT_RATIO = new BigNumber("300000000000000000"); // 0.3e18
+
+// Invariant growth limit: non-proportional joins cannot cause the invariant to increase by more than this ratio
+const MAX_INVARIANT_RATIO = new BigNumber("3000000000000000000"); // 3e18
+// Invariant shrink limit: non-proportional exits cannot cause the invariant to decrease by less than this ratio
+const MIN_INVARIANT_RATIO = new BigNumber("700000000000000000"); // 0.7e18
+
+export function _calculateInvariant(
   normalizedWeights: BigNumber[],
   balances: BigNumber[]
 ): BigNumber {
@@ -26,18 +31,22 @@ export function invariant(
       fp.powDown(balances[i], normalizedWeights[i])
     );
   }
+
+  if (invariant.lte(fp.ZERO)) {
+    throw new Error("ZERO_INVARIANT");
+  }
+
   return invariant;
 }
 
 // Computes how many tokens can be taken out of a pool if `amountIn` is sent, given the
 // current balances and weights.
-export function exactTokenInForTokenOut(
+export function _calcOutGivenIn(
   balanceIn: BigNumber,
   weightIn: BigNumber,
   balanceOut: BigNumber,
   weightOut: BigNumber,
-  amountIn: BigNumber,
-  swapFee: BigNumber
+  amountIn: BigNumber
 ): BigNumber {
   /*****************************************************************************************
   // outGivenIn                                                                           //
@@ -54,8 +63,10 @@ export function exactTokenInForTokenOut(
   // The multiplication rounds down, and the subtrahend (power) rounds up (so the base rounds up too)
   // Because bi / (bi + ai) <= 1, the exponent rounds down
 
-  // Handle fee (in Solidity code, fees are handled at another layer)
-  amountIn = fp.mulUp(amountIn, fp.complement(swapFee));
+  // Cannot exceed maximum in ratio
+  if (amountIn.gt(fp.mulDown(balanceIn, MAX_IN_RATIO))) {
+    throw new Error("MAX_IN_RATIO");
+  }
 
   const denominator = fp.add(balanceIn, amountIn);
   const base = fp.divUp(balanceIn, denominator);
@@ -67,13 +78,12 @@ export function exactTokenInForTokenOut(
 
 // Computes how many tokens must be sent to a pool in order to take `amountOut`, given the
 // current balances and weights.
-export function tokenInForExactTokenOut(
+export function _calcInGivenOut(
   balanceIn: BigNumber,
   weightIn: BigNumber,
   balanceOut: BigNumber,
   weightOut: BigNumber,
-  amountOut: BigNumber,
-  swapFee: BigNumber
+  amountOut: BigNumber
 ): BigNumber {
   /*****************************************************************************************
   // inGivenOut                                                                           //
@@ -90,17 +100,21 @@ export function tokenInForExactTokenOut(
   // The multiplication rounds up, and the power rounds up (so the base rounds up too)
   // Because bo / (bo - ao) >= 1, the exponent rounds up
 
+  // Cannot exceed maximum out ratio
+  if (amountOut.gt(fp.mulDown(balanceOut, MAX_OUT_RATIO))) {
+    throw new Error("MAX_OUT_RATIO");
+  }
+
   const base = fp.divUp(balanceOut, fp.sub(balanceOut, amountOut));
   const exponent = fp.divUp(weightOut, weightIn);
   const power = fp.powUp(base, exponent);
 
   const ratio = fp.sub(power, fp.ONE);
 
-  // Handle fee (in Solidity code, fees are handled at another layer)
-  return fp.divUp(fp.mulUp(balanceIn, ratio), fp.complement(swapFee));
+  return fp.mulUp(balanceIn, ratio);
 }
 
-export function exactTokensInForBptOut(
+export function _calcBptOutGivenExactTokensIn(
   balances: BigNumber[],
   normalizedWeights: BigNumber[],
   amountsIn: BigNumber[],
@@ -160,7 +174,7 @@ export function exactTokensInForBptOut(
   }
 }
 
-export function tokenInForExactBptOut(
+export function _calcTokenInGivenExactBptOut(
   balance: BigNumber,
   normalizedWeight: BigNumber,
   bptAmountOut: BigNumber,
@@ -183,6 +197,9 @@ export function tokenInForExactBptOut(
     fp.add(bptTotalSupply, bptAmountOut),
     bptTotalSupply
   );
+  if (invariantRatio.gt(MAX_INVARIANT_RATIO)) {
+    throw new Error("MAX_OUT_BPT_FOR_TOKEN_IN");
+  }
 
   // Calculate by how much the token balance has to increase to cause `invariantRatio`
   const balanceRatio = fp.powUp(
@@ -202,7 +219,7 @@ export function tokenInForExactBptOut(
   );
 }
 
-export function bptInForExactTokensOut(
+export function _calcBptInGivenExactTokensOut(
   balances: BigNumber[],
   normalizedWeights: BigNumber[],
   amountsOut: BigNumber[],
@@ -260,7 +277,7 @@ export function bptInForExactTokensOut(
   return fp.mulUp(bptTotalSupply, fp.complement(invariantRatio));
 }
 
-export function exactBptInForTokenOut(
+export function _calcTokenOutGivenExactBptIn(
   balance: BigNumber,
   normalizedWeight: BigNumber,
   bptAmountIn: BigNumber,
@@ -285,6 +302,9 @@ export function exactBptInForTokenOut(
     fp.sub(bptTotalSupply, bptAmountIn),
     bptTotalSupply
   );
+  if (invariantRatio.lt(MIN_INVARIANT_RATIO)) {
+    throw new Error("MIN_BPT_IN_FOR_TOKEN_OUT");
+  }
 
   // Calculate by how much the token balance has to increase to cause `invariantRatio`
   const balanceRatio = fp.powUp(
@@ -310,7 +330,7 @@ export function exactBptInForTokenOut(
   );
 }
 
-export function exactBptInForTokensOut(
+export function _calcTokensOutGivenExactBptIn(
   balances: BigNumber[],
   bptAmountIn: BigNumber,
   bptTotalSupply: BigNumber

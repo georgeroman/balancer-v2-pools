@@ -1,165 +1,108 @@
 import BigNumber, { bn, scale } from "../../utils/big-number";
+
+import * as fp from "../../utils/math/fixed-point";
+import BasePool from "../base-pool";
+import { PoolType } from "../base-types";
 import * as math from "./math";
+import { IWeightedPoolToken } from "./types";
 
-import { IPool, PairTypes, PoolTypes } from "../base-types";
-import { IWeightedPoolPair, IWeightedPoolToken } from "./types";
+export default class WeightedPool extends BasePool {
+  // A minimum normalized weight imposes a maximum weight ratio
+  // We need this due to limitations in the implementation of the power function, as these ratios are often exponents
+  private MIN_WEIGHT = new BigNumber("10000000000000000"); // 0.01e18
 
-export default class WeightedPool implements IPool {
-  public poolId: string;
-  public poolType = PoolTypes.Weighted;
-  public tokens: IWeightedPoolToken[];
-  public swapFee: BigNumber;
-  public totalShares: BigNumber;
-  public totalWeight: BigNumber;
+  private _wTokens: IWeightedPoolToken[];
+
+  get tokens() {
+    return this._wTokens;
+  }
 
   constructor(
     poolId: string,
     tokens: IWeightedPoolToken[],
-    swapFee: BigNumber,
-    totalShares: BigNumber
+    swapFeePercentage: BigNumber
   ) {
-    this.poolId = poolId;
-    this.tokens = tokens;
-    this.swapFee = swapFee;
-    this.totalShares = totalShares;
-    this.totalWeight = tokens
-      .map(({ weight }) => weight)
-      .reduce((totalWeight, weight) => totalWeight.plus(weight), bn(0));
+    super(
+      poolId,
+      PoolType.Weighted,
+      tokens.map(({ address }) => address),
+      swapFeePercentage
+    );
+
+    let normalizedSum = fp.ZERO;
+    for (let i = 0; i < tokens.length; i++) {
+      if (tokens[i].weight.lt(this.MIN_WEIGHT)) {
+        throw new Error("MIN_WEIGHT");
+      }
+      normalizedSum = normalizedSum.plus(tokens[i].weight);
+    }
+
+    if (!normalizedSum.eq(fp.ONE)) {
+      throw new Error("NORMALIZED_WEIGHT_INVARIANT");
+    }
   }
 
-  public getPoolPair(
-    tokenInAddress: string,
-    tokenOutAddress: string
-  ): IWeightedPoolPair {
-    const tokenIn = this.tokens.find(
-      ({ address }) => address === tokenInAddress
-    );
-    if (!tokenIn) {
-      throw new Error("Pool does not contain given tokenIn");
-    }
-
-    const tokenOut = this.tokens.find(
-      ({ address }) => address === tokenOutAddress
-    );
-    if (!tokenOut) {
-      throw new Error("Pool does not contain given tokenOut");
-    }
-
-    let pairType: PairTypes;
-    let balanceIn: BigNumber;
-    let balanceOut: BigNumber;
-    let decimalsOut: number;
-    let decimalsIn: number;
-    let weightIn: BigNumber;
-    let weightOut: BigNumber;
-
-    // Determine the pair's type by checking if tokenIn or tokenOut is the pool itself (BPT)
-    if (tokenInAddress === this.poolId) {
-      pairType = PairTypes.BptToToken;
-      if (!this.totalShares) {
-        throw new Error("Pool missing totalShares field");
-      }
-      balanceIn = this.totalShares;
-      decimalsIn = 18; // Not used but needs to be defined
-      weightIn = bn(1); // Not used but needs to be defined
-    } else if (tokenOutAddress === this.poolId) {
-      pairType = PairTypes.TokenToBpt;
-      if (!this.totalShares) {
-        throw new Error("Pool missing totalShares field");
-      }
-      balanceOut = this.totalShares;
-      decimalsOut = 18; // Not used but needs to be defined
-      weightOut = bn(1); // Not used but needs to be defined
-    } else {
-      pairType = PairTypes.TokenToToken;
-    }
-
-    if (pairType != PairTypes.BptToToken) {
-      balanceIn = tokenIn.balance;
-      decimalsIn = tokenIn.decimals;
-      weightIn = tokenIn.weight.div(this.totalWeight);
-    }
-    if (pairType != PairTypes.TokenToBpt) {
-      balanceOut = tokenOut.balance;
-      decimalsOut = tokenOut.decimals;
-      weightOut = tokenOut.weight.div(this.totalWeight);
-    }
-
-    return {
-      poolId: this.poolId,
-      poolType: this.poolType,
-      pairType: pairType,
-      balanceIn: balanceIn,
-      balanceOut: balanceOut,
-      tokenIn: tokenIn.address,
-      tokenOut: tokenOut.address,
-      decimalsIn: decimalsIn,
-      decimalsOut: decimalsOut,
-      swapFee: this.swapFee,
-      weightIn: weightIn,
-      weightOut: weightOut,
-    };
-  }
-
-  public invariant(): BigNumber {
+  public getInvariant(): BigNumber {
     const normalizedWeights = this.tokens.map(({ weight }) =>
-      scale(weight.div(this.totalWeight), 18)
+      scale(weight, 18)
     );
     const balances = this.tokens.map(({ balance, decimals }) =>
       scale(balance, decimals)
     );
 
-    const result = math.invariant(normalizedWeights, balances);
+    const result = math._calculateInvariant(normalizedWeights, balances);
     return scale(result, -18);
   }
 
-  public exactTokenInForTokenOut(
-    poolPair: IWeightedPoolPair,
+  protected _onSwapGivenIn(
+    tokenIn: string,
+    tokenOut: string,
     amount: BigNumber
   ): BigNumber {
-    const result = math.exactTokenInForTokenOut(
-      scale(poolPair.balanceIn, poolPair.decimalsIn),
-      scale(poolPair.weightIn, 18),
-      scale(poolPair.balanceOut, poolPair.decimalsOut),
-      scale(poolPair.weightOut, 18),
-      scale(amount, poolPair.decimalsIn),
-      scale(poolPair.swapFee, 18)
+    const {
+      balance: balanceIn,
+      decimals: decimalsIn,
+      weight: weightIn,
+    } = this.tokens.find(({ address }) => address === tokenIn);
+    const {
+      balance: balanceOut,
+      decimals: decimalsOut,
+      weight: weightOut,
+    } = this.tokens.find(({ address }) => address === tokenOut);
+
+    const result = math._calcOutGivenIn(
+      scale(balanceIn, decimalsIn),
+      scale(weightIn, 18),
+      scale(balanceOut, decimalsOut),
+      scale(weightOut, 18),
+      scale(amount, decimalsIn)
     );
     return scale(result, -18);
   }
 
-  public tokenInForExactTokenOut(
-    poolPair: IWeightedPoolPair,
+  protected _onSwapGivenOut(
+    tokenIn: string,
+    tokenOut: string,
     amount: BigNumber
   ): BigNumber {
-    const result = math.exactTokenInForTokenOut(
-      scale(poolPair.balanceIn, poolPair.decimalsIn),
-      scale(poolPair.weightIn, 18),
-      scale(poolPair.balanceOut, poolPair.decimalsOut),
-      scale(poolPair.weightOut, 18),
-      scale(amount, poolPair.decimalsIn),
-      scale(poolPair.swapFee, 18)
+    const {
+      balance: balanceIn,
+      decimals: decimalsIn,
+      weight: weightIn,
+    } = this.tokens.find(({ address }) => address === tokenIn);
+    const {
+      balance: balanceOut,
+      decimals: decimalsOut,
+      weight: weightOut,
+    } = this.tokens.find(({ address }) => address === tokenOut);
+
+    const result = math._calcOutGivenIn(
+      scale(balanceIn, decimalsIn),
+      scale(weightIn, 18),
+      scale(balanceOut, decimalsOut),
+      scale(weightOut, 18),
+      scale(amount, decimalsIn)
     );
     return scale(result, -18);
   }
-
-  // public exactTokenInForBptOut(
-  //   poolPair: IWeightedPoolPair,
-  //   amount: BigNumber
-  // ): BigNumber {}
-
-  // public exactBptInForTokenOut(
-  //   poolPair: IWeightedPoolPair,
-  //   amount: BigNumber
-  // ): BigNumber {}
-
-  // public tokenInForExactBptOut(
-  //   poolPair: IWeightedPoolPair,
-  //   amount: BigNumber
-  // ): BigNumber {}
-
-  // public bptInForExactTokenOut(
-  //   poolPair: IWeightedPoolPair,
-  //   amount: BigNumber
-  // ): BigNumber {}
 }
