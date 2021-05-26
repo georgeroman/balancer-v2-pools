@@ -8,7 +8,9 @@ BigNumber.config({
 
 export default BigNumber;
 
-export const bn = (value: BigNumber | number | string) => new BigNumber(value);
+type BigNumberish = BigNumber | number | string;
 
-export const scale = (value: BigNumber, decimalPlaces: number) =>
-  value.times(bn(10).pow(decimalPlaces));
+export const bn = (value: BigNumberish) => new BigNumber(value);
+
+export const scale = (value: BigNumberish, decimalPlaces: number) =>
+  bn(value).times(bn(10).pow(decimalPlaces));

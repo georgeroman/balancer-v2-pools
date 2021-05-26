@@ -16,6 +16,12 @@ export enum SwapTypes {
   ExactOut,
 }
 
+export interface IPoolToken {
+  address: string;
+  balance: BigNumber;
+  decimals: number;
+}
+
 export interface IPoolPair {
   poolId: string;
   poolType: PoolTypes;
@@ -32,7 +38,7 @@ export interface IPoolPair {
 export interface IPool {
   poolId: string;
   poolType: PoolTypes;
-  tokens: string[];
+  tokens: IPoolToken[];
   swapFee: BigNumber;
 
   getPoolPair: (tokenInAddress: string, tokenOutAddress: string) => IPoolPair;
@@ -47,23 +53,11 @@ export interface IPool {
     amount: BigNumber
   ) => BigNumber;
 
-  // exactTokenInForBptOut: (
-  //   poolPairData: IPoolPair,
-  //   amount: BigNumber
-  // ) => BigNumber;
+  // exactTokenInForBptOut: (poolPair: IPoolPair, amount: BigNumber) => BigNumber;
 
-  // exactBptInForTokenOut: (
-  //   poolPairData: IPoolPair,
-  //   amount: BigNumber
-  // ) => BigNumber;
+  // exactBptInForTokenOut: (poolPair: IPoolPair, amount: BigNumber) => BigNumber;
 
-  // tokenInForExactBptOut: (
-  //   poolPairData: IPoolPair,
-  //   amount: BigNumber
-  // ) => BigNumber;
+  // tokenInForExactBptOut: (poolPair: IPoolPair, amount: BigNumber) => BigNumber;
 
-  // bptInForExactTokenOut: (
-  //   poolPairData: IPoolPair,
-  //   amount: BigNumber
-  // ) => BigNumber;
+  // bptInForExactTokenOut: (poolPair: IPoolPair, amount: BigNumber) => BigNumber;
 }

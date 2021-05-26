@@ -7,12 +7,10 @@ import { IWeightedPoolPair, IWeightedPoolToken } from "./types";
 export default class WeightedPool implements IPool {
   public poolId: string;
   public poolType = PoolTypes.Weighted;
-  public tokens: string[];
+  public tokens: IWeightedPoolToken[];
   public swapFee: BigNumber;
   public totalShares: BigNumber;
   public totalWeight: BigNumber;
-
-  private _internalTokens: IWeightedPoolToken[];
 
   constructor(
     poolId: string,
@@ -21,28 +19,26 @@ export default class WeightedPool implements IPool {
     totalShares: BigNumber
   ) {
     this.poolId = poolId;
-    this.tokens = tokens.map(({ address }) => address);
+    this.tokens = tokens;
     this.swapFee = swapFee;
     this.totalShares = totalShares;
     this.totalWeight = tokens
       .map(({ weight }) => weight)
       .reduce((totalWeight, weight) => totalWeight.plus(weight), bn(0));
-
-    this._internalTokens = tokens;
   }
 
   public getPoolPair(
     tokenInAddress: string,
     tokenOutAddress: string
   ): IWeightedPoolPair {
-    const tokenIn = this._internalTokens.find(
+    const tokenIn = this.tokens.find(
       ({ address }) => address === tokenInAddress
     );
     if (!tokenIn) {
       throw new Error("Pool does not contain given tokenIn");
     }
 
-    const tokenOut = this._internalTokens.find(
+    const tokenOut = this.tokens.find(
       ({ address }) => address === tokenOutAddress
     );
     if (!tokenOut) {
@@ -103,6 +99,18 @@ export default class WeightedPool implements IPool {
       weightIn: weightIn,
       weightOut: weightOut,
     };
+  }
+
+  public invariant(): BigNumber {
+    const normalizedWeights = this.tokens.map(({ weight }) =>
+      scale(weight.div(this.totalWeight), 18)
+    );
+    const balances = this.tokens.map(({ balance, decimals }) =>
+      scale(balance, decimals)
+    );
+
+    const result = math.invariant(normalizedWeights, balances);
+    return scale(result, -18);
   }
 
   public exactTokenInForTokenOut(
