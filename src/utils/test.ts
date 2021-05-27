@@ -10,6 +10,9 @@ export const isSameResult = async (x: Promise<any>, y: Promise<any>) => {
   } else if (yErrored) {
     return xErrored;
   } else {
+    // Uncomment to check the actual results:
+    // console.log(xResult.toString(), yResult.toString());
+
     return xResult.toString() === yResult.toString();
   }
 };

@@ -44,17 +44,17 @@ describe("WeightedMath", () => {
       expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
     });
 
-    it("two tokens", async () => {
+    it("two tokens", () => {
       normalizedWeights = ["0.5", "0.5"];
       balances = ["1000", "1500"];
     });
 
-    it("three tokens", async () => {
+    it("three tokens", () => {
       normalizedWeights = ["0.3", "0.3", "0.4"];
       balances = ["1000", "1000", "2000"];
     });
 
-    it("empty invariant", async () => {
+    it("empty invariant", () => {
       normalizedWeights = [];
       balances = [];
     });
@@ -90,7 +90,7 @@ describe("WeightedMath", () => {
       expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
     });
 
-    it("simple values", async () => {
+    it("simple values", () => {
       balanceIn = "1000";
       weightIn = "0.4";
       balanceOut = "3000";
@@ -98,7 +98,7 @@ describe("WeightedMath", () => {
       amountIn = "10";
     });
 
-    it("extreme balances", async () => {
+    it("extreme balances", () => {
       balanceIn = "10000000";
       weightIn = "0.5";
       balanceOut = "1";
@@ -106,7 +106,7 @@ describe("WeightedMath", () => {
       amountIn = "10";
     });
 
-    it("extreme weights", async () => {
+    it("extreme weights", () => {
       balanceIn = "1000";
       weightIn = "0.001";
       balanceOut = "2000";
@@ -145,7 +145,7 @@ describe("WeightedMath", () => {
       expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
     });
 
-    it("simple values", async () => {
+    it("simple values", () => {
       balanceIn = "100";
       weightIn = "0.2";
       balanceOut = "1000";
@@ -153,7 +153,7 @@ describe("WeightedMath", () => {
       amountOut = "100";
     });
 
-    it("extreme balances", async () => {
+    it("extreme balances", () => {
       balanceIn = "90000000";
       weightIn = "0.3";
       balanceOut = "0.1";
@@ -161,12 +161,199 @@ describe("WeightedMath", () => {
       amountOut = "0.01";
     });
 
-    it("extreme weights", async () => {
+    it("extreme weights", () => {
       balanceIn = "1000";
-      weightIn = "0.9999";
+      weightIn = "0.999";
       balanceOut = "2000";
-      weightOut = "0.0001";
+      weightOut = "0.001";
       amountOut = "500";
+    });
+  });
+
+  describe("_calcBptOutGivenExactTokensIn", () => {
+    let balances: string[];
+    let normalizedWeights: string[];
+    let amountsIn: string[];
+    let bptTotalSupply: string;
+    let swapFee: string;
+
+    afterEach(async () => {
+      const evmExecution = evmWeightedMath._calcBptOutGivenExactTokensIn(
+        scaleAll(balances, 18).map(toEvmBn),
+        scaleAll(normalizedWeights, 18).map(toEvmBn),
+        scaleAll(amountsIn, 18).map(toEvmBn),
+        toEvmBn(scale(bptTotalSupply, 18)),
+        toEvmBn(scale(swapFee, 18))
+      );
+      const sdkExecution = new Promise((resolve) =>
+        resolve(
+          sdkWeightedMath._calcBptOutGivenExactTokensIn(
+            scaleAll(balances, 18),
+            scaleAll(normalizedWeights, 18),
+            scaleAll(amountsIn, 18),
+            scale(bptTotalSupply, 18),
+            scale(swapFee, 18)
+          )
+        )
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      balances = ["100", "200", "300"];
+      normalizedWeights = ["0.2", "0.4", "0.4"];
+      amountsIn = ["50", "100", "100"];
+      bptTotalSupply = "1000";
+      swapFee = "0.01";
+    });
+  });
+
+  describe("_calcTokenInGivenExactBptOut", () => {
+    let balance: string;
+    let normalizedWeight: string;
+    let bptAmountOut: string;
+    let bptTotalSupply: string;
+    let swapFee: string;
+
+    afterEach(async () => {
+      const evmExecution = evmWeightedMath._calcTokenInGivenExactBptOut(
+        toEvmBn(scale(balance, 18)),
+        toEvmBn(scale(normalizedWeight, 18)),
+        toEvmBn(scale(bptAmountOut, 18)),
+        toEvmBn(scale(bptTotalSupply, 18)),
+        toEvmBn(scale(swapFee, 18))
+      );
+      const sdkExecution = new Promise((resolve) =>
+        resolve(
+          sdkWeightedMath._calcTokenInGivenExactBptOut(
+            scale(balance, 18),
+            scale(normalizedWeight, 18),
+            scale(bptAmountOut, 18),
+            scale(bptTotalSupply, 18),
+            scale(swapFee, 18)
+          )
+        )
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      balance = "1000";
+      normalizedWeight = "0.6";
+      bptAmountOut = "10";
+      bptTotalSupply = "1000";
+      swapFee = "0.01";
+    });
+  });
+
+  describe("_calcBptInGivenExactTokensOut", () => {
+    let balances: string[];
+    let normalizedWeights: string[];
+    let amountsOut: string[];
+    let bptTotalSupply: string;
+    let swapFee: string;
+
+    afterEach(async () => {
+      const evmExecution = evmWeightedMath._calcBptInGivenExactTokensOut(
+        scaleAll(balances, 18).map(toEvmBn),
+        scaleAll(normalizedWeights, 18).map(toEvmBn),
+        scaleAll(amountsOut, 18).map(toEvmBn),
+        toEvmBn(scale(bptTotalSupply, 18)),
+        toEvmBn(scale(swapFee, 18))
+      );
+      const sdkExecution = new Promise((resolve) =>
+        resolve(
+          sdkWeightedMath._calcBptInGivenExactTokensOut(
+            scaleAll(balances, 18),
+            scaleAll(normalizedWeights, 18),
+            scaleAll(amountsOut, 18),
+            scale(bptTotalSupply, 18),
+            scale(swapFee, 18)
+          )
+        )
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      balances = ["100", "200", "300"];
+      normalizedWeights = ["0.2", "0.4", "0.4"];
+      amountsOut = ["50", "100", "100"];
+      bptTotalSupply = "1000";
+      swapFee = "0.01";
+    });
+  });
+
+  describe("_calcTokenOutGivenExactBptIn", () => {
+    let balance: string;
+    let normalizedWeight: string;
+    let bptAmountIn: string;
+    let bptTotalSupply: string;
+    let swapFee: string;
+
+    afterEach(async () => {
+      const evmExecution = evmWeightedMath._calcTokenOutGivenExactBptIn(
+        toEvmBn(scale(balance, 18)),
+        toEvmBn(scale(normalizedWeight, 18)),
+        toEvmBn(scale(bptAmountIn, 18)),
+        toEvmBn(scale(bptTotalSupply, 18)),
+        toEvmBn(scale(swapFee, 18))
+      );
+      const sdkExecution = new Promise((resolve) =>
+        resolve(
+          sdkWeightedMath._calcTokenOutGivenExactBptIn(
+            scale(balance, 18),
+            scale(normalizedWeight, 18),
+            scale(bptAmountIn, 18),
+            scale(bptTotalSupply, 18),
+            scale(swapFee, 18)
+          )
+        )
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      balance = "1000";
+      normalizedWeight = "0.3";
+      bptAmountIn = "10";
+      bptTotalSupply = "100";
+      swapFee = "0.01";
+    });
+  });
+
+  describe("_calcTokensOutGivenExactBptIn", () => {
+    let balances: string[];
+    let bptAmountIn: string;
+    let bptTotalSupply: string;
+
+    afterEach(async () => {
+      const evmExecution = evmWeightedMath._calcTokensOutGivenExactBptIn(
+        scaleAll(balances, 18).map(toEvmBn),
+        toEvmBn(scale(bptAmountIn, 18)),
+        toEvmBn(scale(bptTotalSupply, 18))
+      );
+      const sdkExecution = new Promise((resolve) =>
+        resolve(
+          sdkWeightedMath._calcTokensOutGivenExactBptIn(
+            scaleAll(balances, 18),
+            scale(bptAmountIn, 18),
+            scale(bptTotalSupply, 18)
+          )
+        )
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      balances = ["100", "1000", "5000"];
+      bptAmountIn = "23.58";
+      bptTotalSupply = "200";
     });
   });
 });
