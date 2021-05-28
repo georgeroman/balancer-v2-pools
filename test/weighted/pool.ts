@@ -10,7 +10,7 @@ describe("WeightedPool", () => {
           new WeightedPool({
             name: "pool",
             tokens: [],
-            totalBptAmount: "1000",
+            bptTotalSupply: "1000",
             swapFeePercentage: "0.001",
           })
       ).to.throw("MIN_TOKENS");
@@ -27,7 +27,7 @@ describe("WeightedPool", () => {
               decimals: 18,
               weight: "0.1",
             }),
-            totalBptAmount: "1000",
+            bptTotalSupply: "1000",
             swapFeePercentage: "0.001",
           })
       ).to.throw("MAX_TOKENS");
@@ -44,7 +44,7 @@ describe("WeightedPool", () => {
               decimals: 18,
               weight: "0.1",
             }),
-            totalBptAmount: "1000",
+            bptTotalSupply: "1000",
             swapFeePercentage: "0.001",
           })
       ).to.throw("NORMALIZED_WEIGHT_INVARIANT");
