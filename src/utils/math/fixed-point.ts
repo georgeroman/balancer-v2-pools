@@ -37,7 +37,7 @@ export const mulUp = (a: BigNumber, b: BigNumber): BigNumber => {
     // divUp(x, y) := (x - 1) / y + 1
     // Note that this requires x != 0, which we already tested for
 
-    return product.minus(new BigNumber(1)).idiv(ONE).plus(new BigNumber(1));
+    return product.minus(bn(1)).idiv(ONE).plus(bn(1));
   }
 };
 
@@ -59,16 +59,16 @@ export const divUp = (a: BigNumber, b: BigNumber): BigNumber => {
     // divUp(x, y) := (x - 1) / y + 1
     // Note that this requires x != 0, which we already tested for.
 
-    return a.times(ONE).minus(new BigNumber(1)).idiv(b).plus(new BigNumber(1));
+    return a.times(ONE).minus(bn(1)).idiv(b).plus(bn(1));
   }
 };
 
 export const powDown = (x: BigNumber, y: BigNumber): BigNumber => {
   const raw = logExp.pow(x, y);
-  const maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), new BigNumber(1));
+  const maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), bn(1));
 
   if (raw.lt(maxError)) {
-    return new BigNumber(0);
+    return bn(0);
   } else {
     return sub(raw, maxError);
   }
@@ -76,11 +76,11 @@ export const powDown = (x: BigNumber, y: BigNumber): BigNumber => {
 
 export const powUp = (x: BigNumber, y: BigNumber): BigNumber => {
   const raw = logExp.pow(x, y);
-  const maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), new BigNumber(1));
+  const maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), bn(1));
 
   return add(raw, maxError);
 };
 
 export const complement = (x: BigNumber): BigNumber => {
-  return x.lt(ONE) ? ONE.minus(x) : new BigNumber(0);
+  return x.lt(ONE) ? ONE.minus(x) : bn(0);
 };

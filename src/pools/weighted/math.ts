@@ -1,17 +1,17 @@
 // Ported from Solidity:
 // https://github.com/balancer-labs/balancer-core-v2/blob/70843e6a61ad11208c1cfabf5cfe15be216ca8d3/pkg/pool-weighted/contracts/WeightedMath.sol
 
-import BigNumber from "../../utils/big-number";
+import BigNumber, { bn } from "../../utils/big-number";
 import * as fp from "../../utils/math/fixed-point";
 
 // Swap limits: amounts swapped may not be larger than this percentage of total balance
-const MAX_IN_RATIO = new BigNumber("300000000000000000"); // 0.3e18
-const MAX_OUT_RATIO = new BigNumber("300000000000000000"); // 0.3e18
+const MAX_IN_RATIO = bn("300000000000000000"); // 0.3e18
+const MAX_OUT_RATIO = bn("300000000000000000"); // 0.3e18
 
 // Invariant growth limit: non-proportional joins cannot cause the invariant to increase by more than this ratio
-const MAX_INVARIANT_RATIO = new BigNumber("3000000000000000000"); // 3e18
+const MAX_INVARIANT_RATIO = bn("3000000000000000000"); // 3e18
 // Invariant shrink limit: non-proportional exits cannot cause the invariant to decrease by less than this ratio
-const MIN_INVARIANT_RATIO = new BigNumber("700000000000000000"); // 0.7e18
+const MIN_INVARIANT_RATIO = bn("700000000000000000"); // 0.7e18
 
 export const _calculateInvariant = (
   normalizedWeights: BigNumber[],
