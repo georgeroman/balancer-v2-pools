@@ -1,5 +1,8 @@
 import { bn, scale } from "../../utils/big-number";
-import * as fp from "../../utils/math/fixed-point";
+import {
+  addSwapFeePercentage,
+  subtractSwapFeePercentage,
+} from "../../utils/pool";
 import * as math from "./math";
 
 export interface IWeightedPoolToken {
@@ -14,6 +17,7 @@ export interface IWeightedPoolParams {
   tokens: IWeightedPoolToken[];
   bptTotalSupply: string;
   swapFeePercentage: string;
+  inPlaceUpdates?: boolean;
 }
 
 export default class WeightedPool {
@@ -31,6 +35,7 @@ export default class WeightedPool {
   private _tokens: IWeightedPoolToken[];
   private _bptTotalSupply: string;
   private _swapFeePercentage: string;
+  private _inPlaceUpdates: boolean;
 
   get name() {
     return this._name;
@@ -60,6 +65,8 @@ export default class WeightedPool {
     this._tokens = params.tokens;
     this._bptTotalSupply = params.bptTotalSupply;
     this.setSwapFeePercentage(params.swapFeePercentage);
+    this._inPlaceUpdates =
+      params.inPlaceUpdates === undefined ? true : params.inPlaceUpdates;
 
     let normalizedSum = bn(0);
     for (let i = 0; i < params.tokens.length; i++) {
@@ -104,11 +111,9 @@ export default class WeightedPool {
     const tokenOut = this.tokens.find((t) => t.name === tokenOutName);
 
     const scaledAmountIn = scale(amountIn, tokenIn.decimals);
-
-    // This returns amount - fee amount, so we round up (favoring a higher fee amount)
-    const scaledAmountInWithFee = fp.sub(
+    const scaledAmountInWithFee = subtractSwapFeePercentage(
       scaledAmountIn,
-      fp.mulUp(scaledAmountIn, scale(this.swapFeePercentage, 18))
+      scale(this.swapFeePercentage, 18)
     );
 
     const scaledAmountOut = math._calcOutGivenIn(
@@ -120,9 +125,11 @@ export default class WeightedPool {
     );
     const amountOut = scale(scaledAmountOut, -18);
 
-    // Update the balances of the swapped tokens
-    tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
-    tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
+    if (this._inPlaceUpdates) {
+      // Update the balances of the swapped tokens
+      tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
+      tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
+    }
 
     return amountOut.toString();
   }
@@ -145,17 +152,17 @@ export default class WeightedPool {
       scaledAmountOut
     );
 
-    // This returns amount + fee amount, so we round up (favoring a higher fee amount)
-    const scaledAmountInWithFee = fp.divUp(
+    const scaledAmountInWithFee = addSwapFeePercentage(
       scaledAmountIn,
-      fp.complement(scale(this.swapFeePercentage, 18))
+      scale(this.swapFeePercentage, 18)
     );
-
     const amountIn = scale(scaledAmountInWithFee, -18);
 
-    // Update the balances of the swapped tokens
-    tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
-    tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
+    if (this._inPlaceUpdates) {
+      // Update the balances of the swapped tokens
+      tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
+      tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
+    }
 
     return amountIn.toString();
   }
@@ -176,14 +183,18 @@ export default class WeightedPool {
     );
     const bptOut = scale(scaledBptOut, -18);
 
-    // Update the token balances
-    for (let i = 0; i < this.tokens.length; i++) {
-      const token = this.tokens[i];
-      token.balance = bn(token.balance).plus(amountsIn[token.name]).toString();
-    }
+    if (this._inPlaceUpdates) {
+      // Update the token balances
+      for (let i = 0; i < this.tokens.length; i++) {
+        const token = this.tokens[i];
+        token.balance = bn(token.balance)
+          .plus(amountsIn[token.name])
+          .toString();
+      }
 
-    // Update the BPT supply
-    this._bptTotalSupply = bn(this._bptTotalSupply).plus(bptOut).toString();
+      // Update the BPT supply
+      this._bptTotalSupply = bn(this._bptTotalSupply).plus(bptOut).toString();
+    }
 
     return bptOut.toString();
   }
@@ -206,11 +217,13 @@ export default class WeightedPool {
     );
     const amountIn = scale(scaledAmountIn, -18);
 
-    // Update the token balances
-    tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
+    if (this._inPlaceUpdates) {
+      // Update the token balances
+      tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
 
-    // Update the BPT supply
-    this._bptTotalSupply = bn(this._bptTotalSupply).plus(bptOut).toString();
+      // Update the BPT supply
+      this._bptTotalSupply = bn(this._bptTotalSupply).plus(bptOut).toString();
+    }
 
     return amountIn.toString();
   }
@@ -233,11 +246,13 @@ export default class WeightedPool {
     );
     const amountOut = scale(scaledAmountOut, -18);
 
-    // Update the token balances
-    tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
+    if (this._inPlaceUpdates) {
+      // Update the token balances
+      tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
 
-    // Update the BPT supply
-    this._bptTotalSupply = bn(this._bptTotalSupply).minus(bptIn).toString();
+      // Update the BPT supply
+      this._bptTotalSupply = bn(this._bptTotalSupply).minus(bptIn).toString();
+    }
 
     return amountOut.toString();
   }
@@ -249,6 +264,19 @@ export default class WeightedPool {
       scale(this.bptTotalSupply, 18)
     );
     const amountsOut = scaledAmountsOut.map((a) => scale(a, -18));
+
+    if (this._inPlaceUpdates) {
+      // Update the token balances
+      for (let i = 0; i < this.tokens.length; i++) {
+        const token = this.tokens[i];
+        token.balance = bn(token.balance)
+          .minus(amountsOut[token.name])
+          .toString();
+      }
+
+      // Update the BPT supply
+      this._bptTotalSupply = bn(this._bptTotalSupply).minus(bptIn).toString();
+    }
 
     return amountsOut.map((a) => a.toString());
   }
@@ -269,16 +297,18 @@ export default class WeightedPool {
     );
     const bptIn = scale(scaledBptIn, -18);
 
-    // Update the token balances
-    for (let i = 0; i < this.tokens.length; i++) {
-      const token = this.tokens[i];
-      token.balance = bn(token.balance)
-        .minus(amountsOut[token.name])
-        .toString();
-    }
+    if (this._inPlaceUpdates) {
+      // Update the token balances
+      for (let i = 0; i < this.tokens.length; i++) {
+        const token = this.tokens[i];
+        token.balance = bn(token.balance)
+          .minus(amountsOut[token.name])
+          .toString();
+      }
 
-    // Update the BPT supply
-    this._bptTotalSupply = bn(this._bptTotalSupply).minus(bptIn).toString();
+      // Update the BPT supply
+      this._bptTotalSupply = bn(this._bptTotalSupply).minus(bptIn).toString();
+    }
 
     return bptIn.toString();
   }

@@ -1,6 +1,12 @@
 import { expect } from "chai";
 
 import WeightedPool from "../../src/pools/weighted";
+import * as sdkWeightedMath from "../../src/pools/weighted/math";
+import { bn, scale } from "../../src/utils/big-number";
+import {
+  addSwapFeePercentage,
+  subtractSwapFeePercentage,
+} from "../../src/utils/pool";
 
 describe("WeightedPool", () => {
   describe("constructor", () => {
@@ -107,6 +113,93 @@ describe("WeightedPool", () => {
             swapFeePercentage: "10",
           })
       ).to.throw("MAX_SWAP_FEE_PERCENTAGE");
+    });
+  });
+
+  describe("swapGivenIn", () => {
+    const DAI = {
+      name: "DAI",
+      balance: "30000000",
+      decimals: 18,
+      weight: "0.4",
+    };
+    const ETH = {
+      name: "ETH",
+      balance: "10000",
+      decimals: 18,
+      weight: "0.6",
+    };
+
+    it("swap fee is deducted from amount in", () => {
+      const pool = new WeightedPool({
+        name: "pool",
+        tokens: [DAI, ETH],
+        bptTotalSupply: "1000",
+        swapFeePercentage: "0.01",
+        inPlaceUpdates: false,
+      });
+
+      const amountIn = "10";
+      const amountOut = pool.swapGivenIn(DAI.name, ETH.name, amountIn);
+
+      const amountOutExpected = scale(
+        sdkWeightedMath._calcOutGivenIn(
+          scale(DAI.balance, DAI.decimals),
+          scale(DAI.weight, 18),
+          scale(ETH.balance, ETH.decimals),
+          scale(ETH.weight, 18),
+          subtractSwapFeePercentage(
+            scale(amountIn, DAI.decimals),
+            scale(pool.swapFeePercentage, 18)
+          )
+        ),
+        -18
+      ).toString();
+
+      expect(amountOut).to.be.equal(amountOutExpected);
+    });
+  });
+
+  describe("swapGivenOut", () => {
+    const DAI = {
+      name: "DAI",
+      balance: "30000000",
+      decimals: 18,
+      weight: "0.5",
+    };
+    const ETH = {
+      name: "ETH",
+      balance: "10000",
+      decimals: 18,
+      weight: "0.5",
+    };
+
+    it("swap fee is added to amount in", () => {
+      const pool = new WeightedPool({
+        name: "pool",
+        tokens: [DAI, ETH],
+        bptTotalSupply: "1000",
+        swapFeePercentage: "0.01",
+        inPlaceUpdates: false,
+      });
+
+      const amountOut = "10";
+      const amountIn = pool.swapGivenOut(DAI.name, ETH.name, amountOut);
+      const amountInExpected = scale(
+        addSwapFeePercentage(
+          sdkWeightedMath._calcInGivenOut(
+            scale(DAI.balance, DAI.decimals),
+            scale(DAI.weight, 18),
+            scale(ETH.balance, ETH.decimals),
+            scale(ETH.weight, 18),
+            scale(amountOut, ETH.decimals)
+          ),
+          scale(pool.swapFeePercentage, 18)
+        ),
+        -18
+      ).toString();
+
+      expect(amountIn).to.be.equal(amountInExpected);
     });
   });
 });
