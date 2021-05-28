@@ -1,5 +1,4 @@
-import BigNumber, { bn, scale } from "../../utils/big-number";
-
+import { bn, scale } from "../../utils/big-number";
 import * as fp from "../../utils/math/fixed-point";
 import * as math from "./math";
 
@@ -7,7 +6,7 @@ export interface IWeightedPoolToken {
   name: string;
   balance: string;
   decimals: number;
-  weight: BigNumber;
+  weight: string;
 }
 
 export interface IWeightedPoolParams {
