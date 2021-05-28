@@ -1,13 +1,16 @@
 // Ported from Solidity:
 // https://github.com/balancer-labs/balancer-core-v2/blob/70843e6a61ad11208c1cfabf5cfe15be216ca8d3/pkg/solidity-utils/contracts/math/FixedPoint.sol
 
-import BigNumber from "../big-number";
+import BigNumber, { bn } from "../big-number";
 import * as logExp from "./log-exp";
 
-export const ZERO = new BigNumber(0);
-export const ONE = new BigNumber("1000000000000000000"); // 10^18
+export const ZERO = bn(0);
+export const ONE = bn("1000000000000000000"); // 10^18
 
-export const MAX_POW_RELATIVE_ERROR = new BigNumber(10000); // 10^(-14)
+export const MAX_POW_RELATIVE_ERROR = bn(10000); // 10^(-14)
+
+// Minimum base for the power function when the exponent is 'free' (larger than ONE)
+export const MIN_POW_BASE_FREE_EXPONENT = bn("700000000000000000"); // 0.7e18
 
 export const add = (a: BigNumber, b: BigNumber): BigNumber => {
   // Fixed Point addition is the same as regular checked addition

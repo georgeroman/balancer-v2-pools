@@ -356,4 +356,43 @@ describe("WeightedMath", () => {
       bptTotalSupply = "200";
     });
   });
+
+  describe("_calcDueTokenProtocolSwapFeeAmount", () => {
+    let balance: string;
+    let normalizedWeight: string;
+    let previousInvariant: string;
+    let currentInvariant: string;
+    let protocolSwapFeePercentage: string;
+
+    afterEach(async () => {
+      const evmExecution = evmWeightedMath._calcDueTokenProtocolSwapFeeAmount(
+        toEvmBn(scale(balance, 18)),
+        toEvmBn(scale(normalizedWeight, 18)),
+        toEvmBn(scale(previousInvariant, 18)),
+        toEvmBn(scale(currentInvariant, 18)),
+        toEvmBn(scale(protocolSwapFeePercentage, 18))
+      );
+      const sdkExecution = new Promise((resolve) =>
+        resolve(
+          sdkWeightedMath._calcDueTokenProtocolSwapFeeAmount(
+            scale(balance, 18),
+            scale(normalizedWeight, 18),
+            scale(previousInvariant, 18),
+            scale(currentInvariant, 18),
+            scale(protocolSwapFeePercentage, 18)
+          )
+        )
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      balance = "1000";
+      normalizedWeight = "0.3";
+      previousInvariant = "100000000";
+      currentInvariant = "100000999";
+      protocolSwapFeePercentage = "0.01";
+    });
+  });
 });

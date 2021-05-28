@@ -13,10 +13,10 @@ const MAX_INVARIANT_RATIO = new BigNumber("3000000000000000000"); // 3e18
 // Invariant shrink limit: non-proportional exits cannot cause the invariant to decrease by less than this ratio
 const MIN_INVARIANT_RATIO = new BigNumber("700000000000000000"); // 0.7e18
 
-export function _calculateInvariant(
+export const _calculateInvariant = (
   normalizedWeights: BigNumber[],
   balances: BigNumber[]
-): BigNumber {
+): BigNumber => {
   /*****************************************************************************************
   // invariant               _____                                                        //
   // wi = weight index i      | |      wi                                                 //
@@ -37,17 +37,17 @@ export function _calculateInvariant(
   }
 
   return invariant;
-}
+};
 
 // Computes how many tokens can be taken out of a pool if `amountIn` is sent, given the
 // current balances and weights.
-export function _calcOutGivenIn(
+export const _calcOutGivenIn = (
   balanceIn: BigNumber,
   weightIn: BigNumber,
   balanceOut: BigNumber,
   weightOut: BigNumber,
   amountIn: BigNumber
-): BigNumber {
+): BigNumber => {
   /*****************************************************************************************
   // outGivenIn                                                                           //
   // ao = amountOut                                                                       //
@@ -74,17 +74,17 @@ export function _calcOutGivenIn(
   const power = fp.powUp(base, exponent);
 
   return fp.mulDown(balanceOut, fp.complement(power));
-}
+};
 
 // Computes how many tokens must be sent to a pool in order to take `amountOut`, given the
 // current balances and weights.
-export function _calcInGivenOut(
+export const _calcInGivenOut = (
   balanceIn: BigNumber,
   weightIn: BigNumber,
   balanceOut: BigNumber,
   weightOut: BigNumber,
   amountOut: BigNumber
-): BigNumber {
+): BigNumber => {
   /*****************************************************************************************
   // inGivenOut                                                                           //
   // ao = amountOut                                                                       //
@@ -112,15 +112,15 @@ export function _calcInGivenOut(
   const ratio = fp.sub(power, fp.ONE);
 
   return fp.mulUp(balanceIn, ratio);
-}
+};
 
-export function _calcBptOutGivenExactTokensIn(
+export const _calcBptOutGivenExactTokensIn = (
   balances: BigNumber[],
   normalizedWeights: BigNumber[],
   amountsIn: BigNumber[],
   bptTotalSupply: BigNumber,
   swapFee: BigNumber
-): BigNumber {
+): BigNumber => {
   // BPT out, so we round down overall
 
   const balanceRatiosWithFee = new Array<BigNumber>(amountsIn.length);
@@ -172,15 +172,15 @@ export function _calcBptOutGivenExactTokensIn(
   } else {
     return fp.ZERO;
   }
-}
+};
 
-export function _calcTokenInGivenExactBptOut(
+export const _calcTokenInGivenExactBptOut = (
   balance: BigNumber,
   normalizedWeight: BigNumber,
   bptAmountOut: BigNumber,
   bptTotalSupply: BigNumber,
   swapFee: BigNumber
-): BigNumber {
+): BigNumber => {
   /*****************************************************************************************
   // tokenInForExactBptOut                                                                //
   // a = amountIn                                                                         //
@@ -217,15 +217,15 @@ export function _calcTokenInGivenExactBptOut(
     nonTaxableAmount,
     fp.divUp(taxableAmount, fp.complement(swapFee))
   );
-}
+};
 
-export function _calcBptInGivenExactTokensOut(
+export const _calcBptInGivenExactTokensOut = (
   balances: BigNumber[],
   normalizedWeights: BigNumber[],
   amountsOut: BigNumber[],
   bptTotalSupply: BigNumber,
   swapFee: BigNumber
-): BigNumber {
+): BigNumber => {
   // BPT in, so we round up overall
 
   const balanceRatiosWithoutFee = new Array<BigNumber>(amountsOut.length);
@@ -275,15 +275,15 @@ export function _calcBptInGivenExactTokensOut(
   }
 
   return fp.mulUp(bptTotalSupply, fp.complement(invariantRatio));
-}
+};
 
-export function _calcTokenOutGivenExactBptIn(
+export const _calcTokenOutGivenExactBptIn = (
   balance: BigNumber,
   normalizedWeight: BigNumber,
   bptAmountIn: BigNumber,
   bptTotalSupply: BigNumber,
   swapFee: BigNumber
-): BigNumber {
+): BigNumber => {
   /*****************************************************************************************
   // exactBptInForTokenOut                                                                //
   // a = amountOut                                                                        //
@@ -328,13 +328,13 @@ export function _calcTokenOutGivenExactBptIn(
     nonTaxableAmount,
     fp.mulDown(taxableAmount, fp.complement(swapFee))
   );
-}
+};
 
-export function _calcTokensOutGivenExactBptIn(
+export const _calcTokensOutGivenExactBptIn = (
   balances: BigNumber[],
   bptAmountIn: BigNumber,
   bptTotalSupply: BigNumber
-): BigNumber[] {
+): BigNumber[] => {
   /*****************************************************************************************
   // exactBptInForTokensOut                                                               //
   // (formula per token)                                                                  //
@@ -355,4 +355,43 @@ export function _calcTokensOutGivenExactBptIn(
   }
 
   return amountsOut;
-}
+};
+
+export const _calcDueTokenProtocolSwapFeeAmount = (
+  balance: BigNumber,
+  normalizedWeight: BigNumber,
+  previousInvariant: BigNumber,
+  currentInvariant: BigNumber,
+  protocolSwapFeePercentage: BigNumber
+): BigNumber => {
+  /*********************************************************************************
+  /*  protocolSwapFeePercentage * balanceToken * ( 1 - (previousInvariant / currentInvariant) ^ (1 / weightToken))
+  *********************************************************************************/
+
+  if (currentInvariant.lte(previousInvariant)) {
+    // This shouldn't happen outside of rounding errors, but have this safeguard nonetheless to prevent the Pool
+    // from entering a locked state in which joins and exits revert while computing accumulated swap fees.
+    return fp.ZERO;
+  }
+
+  // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less in protocol
+  // fees to the Vault.
+
+  // Fee percentage and balance multiplications round down, while the subtrahend (power) rounds up (as does the
+  // base). Because previousInvariant / currentInvariant <= 1, the exponent rounds down.
+
+  let base = fp.divUp(previousInvariant, currentInvariant);
+  const exponent = fp.divDown(fp.ONE, normalizedWeight);
+
+  // Because the exponent is larger than one, the base of the power function has a lower bound. We cap to this
+  // value to avoid numeric issues, which means in the extreme case (where the invariant growth is larger than
+  // 1 / min exponent) the Pool will pay less in protocol fees than it should.
+  base = base.gte(fp.MIN_POW_BASE_FREE_EXPONENT)
+    ? base
+    : fp.MIN_POW_BASE_FREE_EXPONENT;
+
+  const power = fp.powUp(base, exponent);
+
+  const tokenAccruedFees = fp.mulDown(balance, fp.complement(power));
+  return fp.mulDown(tokenAccruedFees, protocolSwapFeePercentage);
+};
