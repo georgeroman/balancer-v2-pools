@@ -3,10 +3,10 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import * as sdkWeightedMath from "../src/pools/weighted-pool/math";
-import { scale, scaleAll } from "../src/utils/big-number";
-import { deployContract, toEvmBn } from "../src/utils/evm";
-import { isSameResult } from "../src/utils/test";
+import * as sdkWeightedMath from "../../src/pools/weighted/math";
+import { scale, scaleAll } from "../../src/utils/big-number";
+import { deployContract, toEvmBn } from "../../src/utils/evm";
+import { isSameResult } from "../../src/utils/test";
 
 describe("WeightedMath", () => {
   let deployer: SignerWithAddress;
