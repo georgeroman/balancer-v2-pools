@@ -136,7 +136,7 @@ describe("WeightedPool", () => {
         tokens: [DAI, ETH],
         bptTotalSupply: "1000",
         swapFeePercentage: "0.01",
-        inPlaceUpdates: false,
+        query: true,
       });
 
       const amountIn = "10";
@@ -180,7 +180,7 @@ describe("WeightedPool", () => {
         tokens: [DAI, ETH],
         bptTotalSupply: "1000",
         swapFeePercentage: "0.01",
-        inPlaceUpdates: false,
+        query: true,
       });
 
       const amountOut = "10";

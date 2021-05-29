@@ -17,7 +17,7 @@ export interface IWeightedPoolParams {
   tokens: IWeightedPoolToken[];
   bptTotalSupply: string;
   swapFeePercentage: string;
-  inPlaceUpdates?: boolean;
+  query?: boolean;
 }
 
 export default class WeightedPool {
@@ -35,7 +35,7 @@ export default class WeightedPool {
   private _tokens: IWeightedPoolToken[];
   private _bptTotalSupply: string;
   private _swapFeePercentage: string;
-  private _inPlaceUpdates: boolean;
+  private _query = false;
 
   get name() {
     return this._name;
@@ -53,6 +53,10 @@ export default class WeightedPool {
     return this._swapFeePercentage;
   }
 
+  get query() {
+    return this._query;
+  }
+
   constructor(params: IWeightedPoolParams) {
     if (params.tokens.length < this.MIN_TOKENS) {
       throw new Error("MIN_TOKENS");
@@ -65,8 +69,10 @@ export default class WeightedPool {
     this._tokens = params.tokens;
     this._bptTotalSupply = params.bptTotalSupply;
     this.setSwapFeePercentage(params.swapFeePercentage);
-    this._inPlaceUpdates =
-      params.inPlaceUpdates === undefined ? true : params.inPlaceUpdates;
+
+    if (params.query) {
+      this._query = params.query;
+    }
 
     let normalizedSum = bn(0);
     for (let i = 0; i < params.tokens.length; i++) {
@@ -92,10 +98,14 @@ export default class WeightedPool {
     this._swapFeePercentage = swapFeePercentage;
   }
 
+  public setQuery(query: boolean) {
+    this._query = query;
+  }
+
   public getInvariant(): string {
     const scaledInvariant = math._calculateInvariant(
-      this.tokens.map((t) => scale(t.weight, 18)),
-      this.tokens.map((t) => scale(t.balance, t.decimals))
+      this._tokens.map((t) => scale(t.weight, 18)),
+      this._tokens.map((t) => scale(t.balance, t.decimals))
     );
     const invariant = scale(scaledInvariant, -18);
 
@@ -107,13 +117,13 @@ export default class WeightedPool {
     tokenOutName: string,
     amountIn: string
   ): string {
-    const tokenIn = this.tokens.find((t) => t.name === tokenInName);
-    const tokenOut = this.tokens.find((t) => t.name === tokenOutName);
+    const tokenIn = this._tokens.find((t) => t.name === tokenInName);
+    const tokenOut = this._tokens.find((t) => t.name === tokenOutName);
 
     const scaledAmountIn = scale(amountIn, tokenIn.decimals);
     const scaledAmountInWithFee = subtractSwapFeePercentage(
       scaledAmountIn,
-      scale(this.swapFeePercentage, 18)
+      scale(this._swapFeePercentage, 18)
     );
 
     const scaledAmountOut = math._calcOutGivenIn(
@@ -125,7 +135,7 @@ export default class WeightedPool {
     );
     const amountOut = scale(scaledAmountOut, -18);
 
-    if (this._inPlaceUpdates) {
+    if (!this._query) {
       // Update the balances of the swapped tokens
       tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
       tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
@@ -139,8 +149,8 @@ export default class WeightedPool {
     tokenOutName: string,
     amountOut: string
   ): string {
-    const tokenIn = this.tokens.find((t) => t.name === tokenInName);
-    const tokenOut = this.tokens.find((t) => t.name === tokenOutName);
+    const tokenIn = this._tokens.find((t) => t.name === tokenInName);
+    const tokenOut = this._tokens.find((t) => t.name === tokenOutName);
 
     const scaledAmountOut = scale(amountOut, tokenOut.decimals);
 
@@ -154,11 +164,11 @@ export default class WeightedPool {
 
     const scaledAmountInWithFee = addSwapFeePercentage(
       scaledAmountIn,
-      scale(this.swapFeePercentage, 18)
+      scale(this._swapFeePercentage, 18)
     );
     const amountIn = scale(scaledAmountInWithFee, -18);
 
-    if (this._inPlaceUpdates) {
+    if (!this._query) {
       // Update the balances of the swapped tokens
       tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
       tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
@@ -170,23 +180,23 @@ export default class WeightedPool {
   public joinExactTokensInForBptOut(amountsIn: {
     [name: string]: string;
   }): string {
-    if (Object.keys(amountsIn).length !== this.tokens.length) {
+    if (Object.keys(amountsIn).length !== this._tokens.length) {
       throw new Error("Invalid input");
     }
 
     const scaledBptOut = math._calcBptOutGivenExactTokensIn(
-      this.tokens.map((t) => scale(t.balance, t.decimals)),
-      this.tokens.map((t) => scale(t.weight, 18)),
-      this.tokens.map((t) => scale(amountsIn[t.name], t.decimals)),
-      scale(this.bptTotalSupply, 18),
-      scale(this.swapFeePercentage, 18)
+      this._tokens.map((t) => scale(t.balance, t.decimals)),
+      this._tokens.map((t) => scale(t.weight, 18)),
+      this._tokens.map((t) => scale(amountsIn[t.name], t.decimals)),
+      scale(this._bptTotalSupply, 18),
+      scale(this._swapFeePercentage, 18)
     );
     const bptOut = scale(scaledBptOut, -18);
 
-    if (this._inPlaceUpdates) {
+    if (!this._query) {
       // Update the token balances
-      for (let i = 0; i < this.tokens.length; i++) {
-        const token = this.tokens[i];
+      for (let i = 0; i < this._tokens.length; i++) {
+        const token = this._tokens[i];
         token.balance = bn(token.balance)
           .plus(amountsIn[token.name])
           .toString();
@@ -203,7 +213,7 @@ export default class WeightedPool {
     tokenInName: string,
     bptOut: string
   ): string {
-    const tokenIn = this.tokens.find((t) => t.name === tokenInName);
+    const tokenIn = this._tokens.find((t) => t.name === tokenInName);
     if (!tokenIn) {
       throw new Error("Invalid input");
     }
@@ -212,12 +222,12 @@ export default class WeightedPool {
       scale(tokenIn.balance, tokenIn.decimals),
       scale(tokenIn.weight, 18),
       scale(bptOut, 18),
-      scale(this.bptTotalSupply, 18),
-      scale(this.swapFeePercentage, 18)
+      scale(this._bptTotalSupply, 18),
+      scale(this._swapFeePercentage, 18)
     );
     const amountIn = scale(scaledAmountIn, -18);
 
-    if (this._inPlaceUpdates) {
+    if (!this._query) {
       // Update the token balances
       tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
 
@@ -232,7 +242,7 @@ export default class WeightedPool {
     tokenOutName: string,
     bptIn: string
   ): string {
-    const tokenOut = this.tokens.find((t) => t.name === tokenOutName);
+    const tokenOut = this._tokens.find((t) => t.name === tokenOutName);
     if (!tokenOut) {
       throw new Error("Invalid input");
     }
@@ -241,12 +251,12 @@ export default class WeightedPool {
       scale(tokenOut.balance, tokenOut.decimals),
       scale(tokenOut.weight, 18),
       scale(bptIn, 18),
-      scale(this.bptTotalSupply, 18),
-      scale(this.swapFeePercentage, 19)
+      scale(this._bptTotalSupply, 18),
+      scale(this._swapFeePercentage, 19)
     );
     const amountOut = scale(scaledAmountOut, -18);
 
-    if (this._inPlaceUpdates) {
+    if (!this._query) {
       // Update the token balances
       tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
 
@@ -259,16 +269,16 @@ export default class WeightedPool {
 
   public exitExactBptInForTokensOut(bptIn: string): string[] {
     const scaledAmountsOut = math._calcTokensOutGivenExactBptIn(
-      this.tokens.map((t) => scale(t.balance, t.decimals)),
+      this._tokens.map((t) => scale(t.balance, t.decimals)),
       scale(bptIn, 18),
-      scale(this.bptTotalSupply, 18)
+      scale(this._bptTotalSupply, 18)
     );
     const amountsOut = scaledAmountsOut.map((a) => scale(a, -18));
 
-    if (this._inPlaceUpdates) {
+    if (!this._query) {
       // Update the token balances
-      for (let i = 0; i < this.tokens.length; i++) {
-        const token = this.tokens[i];
+      for (let i = 0; i < this._tokens.length; i++) {
+        const token = this._tokens[i];
         token.balance = bn(token.balance)
           .minus(amountsOut[token.name])
           .toString();
@@ -284,23 +294,23 @@ export default class WeightedPool {
   public exitBptInForExactTokensOut(amountsOut: {
     [name: string]: string;
   }): string {
-    if (Object.keys(amountsOut).length !== this.tokens.length) {
+    if (Object.keys(amountsOut).length !== this._tokens.length) {
       throw new Error("Invalid input");
     }
 
     const scaledBptIn = math._calcBptInGivenExactTokensOut(
-      this.tokens.map((t) => scale(t.balance, t.decimals)),
-      this.tokens.map((t) => scale(t.weight, 18)),
-      this.tokens.map((t) => scale(amountsOut[t.name], t.decimals)),
-      scale(this.bptTotalSupply, 18),
-      scale(this.swapFeePercentage, 18)
+      this._tokens.map((t) => scale(t.balance, t.decimals)),
+      this._tokens.map((t) => scale(t.weight, 18)),
+      this._tokens.map((t) => scale(amountsOut[t.name], t.decimals)),
+      scale(this._bptTotalSupply, 18),
+      scale(this._swapFeePercentage, 18)
     );
     const bptIn = scale(scaledBptIn, -18);
 
-    if (this._inPlaceUpdates) {
+    if (!this._query) {
       // Update the token balances
-      for (let i = 0; i < this.tokens.length; i++) {
-        const token = this.tokens[i];
+      for (let i = 0; i < this._tokens.length; i++) {
+        const token = this._tokens[i];
         token.balance = bn(token.balance)
           .minus(amountsOut[token.name])
           .toString();
