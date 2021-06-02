@@ -2,7 +2,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
 
-import BigNumber from "../utils/big-number";
+import BigNumber from "@utils/big-number";
 
 type ContractDeploymentParams = {
   name: string;

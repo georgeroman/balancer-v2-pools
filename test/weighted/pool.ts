@@ -1,205 +1,78 @@
 import { expect } from "chai";
+import { Contract } from "ethers";
+import { ethers } from "hardhat";
 
-import WeightedPool from "../../src/pools/weighted";
-import * as sdkWeightedMath from "../../src/pools/weighted/math";
-import { bn, scale } from "../../src/utils/big-number";
-import {
-  addSwapFeePercentage,
-  subtractSwapFeePercentage,
-} from "../../src/utils/pool";
+import WeightedPool, { IWeightedPoolToken } from "@pools/weighted";
+import { querySwapGivenIn } from "@utils/balancer";
+import { isSameResult } from "@utils/test";
 
 describe("WeightedPool", () => {
-  describe("constructor", () => {
-    it("too few tokens", () => {
-      expect(
-        () =>
-          new WeightedPool({
-            name: "pool",
-            tokens: [],
-            bptTotalSupply: "1000",
-            swapFeePercentage: "0.001",
-          })
-      ).to.throw("MIN_TOKENS");
-    });
+  let sdkPool: WeightedPool;
+  let evmVault: Contract;
 
-    it("too many tokens", () => {
-      expect(
-        () =>
-          new WeightedPool({
-            name: "pool",
-            tokens: Array(10).fill({
-              name: "token",
-              balance: "1000",
-              decimals: 18,
-              weight: "0.1",
-            }),
-            bptTotalSupply: "1000",
-            swapFeePercentage: "0.001",
-          })
-      ).to.throw("MAX_TOKENS");
-    });
+  before(async () => {
+    sdkPool = await WeightedPool.initFromRealPool(
+      // WETH/DAI 60/40
+      "0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a",
+      true,
+      Number(process.env.BLOCK_NUMBER)
+    );
 
-    it("wrong normalized weight invariant", () => {
-      expect(
-        () =>
-          new WeightedPool({
-            name: "pool",
-            tokens: Array(5).fill({
-              name: "token",
-              balance: "1000",
-              decimals: 18,
-              weight: "0.1",
-            }),
-            bptTotalSupply: "1000",
-            swapFeePercentage: "0.001",
-          })
-      ).to.throw("NORMALIZED_WEIGHT_INVARIANT");
-    });
+    const {
+      abi,
+      address,
+    } = require("@balancer-labs/v2-deployments/deployed/mainnet/Vault.json");
 
-    it("weight too low", () => {
-      expect(
-        () =>
-          new WeightedPool({
-            name: "pool",
-            tokens: [
-              {
-                name: "token",
-                balance: "1000",
-                decimals: 18,
-                weight: "0.9999",
-              },
-              {
-                name: "token",
-                balance: "1000",
-                decimals: 18,
-                weight: "0.0001",
-              },
-            ],
-            bptTotalSupply: "1000",
-            swapFeePercentage: "0.001",
-          })
-      ).to.throw("MIN_WEIGHT");
-    });
+    evmVault = await ethers.getContractAt(abi, address);
 
-    it("fee too low", () => {
-      expect(
-        () =>
-          new WeightedPool({
-            name: "pool",
-            tokens: Array(5).fill({
-              name: "token",
-              balance: "1000",
-              decimals: 18,
-              weight: "0.2",
-            }),
-            bptTotalSupply: "1000",
-            swapFeePercentage: "0.0000001",
-          })
-      ).to.throw("MIN_SWAP_FEE_PERCENTAGE");
-    });
+    // For some reason, the actual on-chain swap fee differs from what is
+    // returned from the subgraph, so to make the tests pass we update the
+    // swap fee to what is on-chain
 
-    it("fee too high", () => {
-      expect(
-        () =>
-          new WeightedPool({
-            name: "pool",
-            tokens: Array(5).fill({
-              name: "token",
-              balance: "1000",
-              decimals: 18,
-              weight: "0.2",
-            }),
-            bptTotalSupply: "1000",
-            swapFeePercentage: "10",
-          })
-      ).to.throw("MAX_SWAP_FEE_PERCENTAGE");
+    const iface = new ethers.utils.Interface([
+      "function getSwapFeePercentage() view returns (uint256)",
+    ]);
+    const rawSwapFeePercentage = await ethers.provider.call({
+      to: sdkPool.address,
+      data: iface.encodeFunctionData("getSwapFeePercentage"),
     });
+    const swapFeePercentage = ethers.utils.formatEther(
+      iface
+        .decodeFunctionResult("getSwapFeePercentage", rawSwapFeePercentage)
+        .toString()
+    );
+
+    sdkPool.setSwapFeePercentage(swapFeePercentage);
   });
 
   describe("swapGivenIn", () => {
-    const DAI = {
-      name: "DAI",
-      balance: "30000000",
-      decimals: 18,
-      weight: "0.4",
-    };
-    const ETH = {
-      name: "ETH",
-      balance: "10000",
-      decimals: 18,
-      weight: "0.6",
-    };
+    let tokenIn: IWeightedPoolToken;
+    let tokenOut: IWeightedPoolToken;
+    let amountIn: string;
 
-    it("swap fee is deducted from amount in", () => {
-      const pool = new WeightedPool({
-        name: "pool",
-        tokens: [DAI, ETH],
-        bptTotalSupply: "1000",
-        swapFeePercentage: "0.01",
-        query: true,
-      });
+    afterEach(async () => {
+      const evmExecution = querySwapGivenIn(
+        evmVault,
+        sdkPool.id,
+        {
+          [tokenIn.symbol]: tokenIn.address,
+          [tokenOut.symbol]: tokenOut.address,
+        },
+        tokenIn.symbol,
+        tokenOut.symbol,
+        amountIn
+      );
+      const sdkExecution = new Promise((resolve) =>
+        resolve(sdkPool.swapGivenIn(tokenIn.symbol, tokenOut.symbol, amountIn))
+      );
 
-      const amountIn = "10";
-      const amountOut = pool.swapGivenIn(DAI.name, ETH.name, amountIn);
-
-      const amountOutExpected = scale(
-        sdkWeightedMath._calcOutGivenIn(
-          scale(DAI.balance, DAI.decimals),
-          scale(DAI.weight, 18),
-          scale(ETH.balance, ETH.decimals),
-          scale(ETH.weight, 18),
-          subtractSwapFeePercentage(
-            scale(amountIn, DAI.decimals),
-            scale(pool.swapFeePercentage, 18)
-          )
-        ),
-        -18
-      ).toString();
-
-      expect(amountOut).to.be.equal(amountOutExpected);
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
     });
-  });
 
-  describe("swapGivenOut", () => {
-    const DAI = {
-      name: "DAI",
-      balance: "30000000",
-      decimals: 18,
-      weight: "0.5",
-    };
-    const ETH = {
-      name: "ETH",
-      balance: "10000",
-      decimals: 18,
-      weight: "0.5",
-    };
-
-    it("swap fee is added to amount in", () => {
-      const pool = new WeightedPool({
-        name: "pool",
-        tokens: [DAI, ETH],
-        bptTotalSupply: "1000",
-        swapFeePercentage: "0.01",
-        query: true,
-      });
-
-      const amountOut = "10";
-      const amountIn = pool.swapGivenOut(DAI.name, ETH.name, amountOut);
-      const amountInExpected = scale(
-        addSwapFeePercentage(
-          sdkWeightedMath._calcInGivenOut(
-            scale(DAI.balance, DAI.decimals),
-            scale(DAI.weight, 18),
-            scale(ETH.balance, ETH.decimals),
-            scale(ETH.weight, 18),
-            scale(amountOut, ETH.decimals)
-          ),
-          scale(pool.swapFeePercentage, 18)
-        ),
-        -18
-      ).toString();
-
-      expect(amountIn).to.be.equal(amountInExpected);
+    it("simple values", async () => {
+      tokenIn = sdkPool.tokens[0];
+      tokenOut = sdkPool.tokens[1];
+      amountIn = "100";
     });
   });
 });
