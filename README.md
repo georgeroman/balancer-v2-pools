@@ -1,4 +1,8 @@
-# `balancer-v2-pools`
+<div align="center">
+  <h2><code>balancer-v2-pools</code></h2>
+</div>
+
+<br/>
 
 Simple SDK for simulating the exact on-chain behaviour of various Balancer v2 pools.
 
