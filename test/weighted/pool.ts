@@ -3,13 +3,14 @@ import { Contract } from "ethers";
 import { ethers } from "hardhat";
 
 import WeightedPool, { IWeightedPoolToken } from "@pools/weighted";
-import * as query from "@utils/balancer-query";
+import * as query from "@utils/pools/weighted/query";
 import { bn } from "@utils/big-number";
 import { isSameResult } from "@utils/test";
 
 describe("WeightedPool", () => {
   let sdkPool: WeightedPool;
   let evmVault: Contract;
+  let evmHelpers: Contract;
 
   before(async () => {
     sdkPool = await WeightedPool.initFromRealPool(
@@ -19,12 +20,11 @@ describe("WeightedPool", () => {
       Number(process.env.BLOCK_NUMBER)
     );
 
-    const {
-      abi,
-      address,
-    } = require("@balancer-labs/v2-deployments/deployed/mainnet/Vault.json");
+    const vault = require("@balancer-labs/v2-deployments/deployed/mainnet/Vault.json");
+    evmVault = await ethers.getContractAt(vault.abi, vault.address);
 
-    evmVault = await ethers.getContractAt(abi, address);
+    const helpers = require("@balancer-labs/v2-deployments/deployed/mainnet/BalancerHelpers.json");
+    evmHelpers = await ethers.getContractAt(helpers.abi, helpers.address);
 
     // For some reason, the actual on-chain swap fee differs from what is
     // returned from the subgraph, so to make the tests pass we update the
@@ -123,6 +123,80 @@ describe("WeightedPool", () => {
       tokenOut = sdkPool.tokens[0];
       // 50% of the balance
       amountOut = bn(tokenOut.balance).div(2).toString();
+    });
+  });
+
+  describe("joinExactTokensInForBptOut", () => {
+    let amountsIn: { [symbol: string]: string };
+
+    afterEach(async () => {
+      const tokenAddresses = {};
+      for (const symbol of Object.keys(amountsIn)) {
+        tokenAddresses[symbol] = sdkPool.tokens.find(
+          (t) => t.symbol === symbol
+        )!.address;
+      }
+
+      const evmExecution = query.joinExactTokensInForBptOut(
+        evmHelpers,
+        sdkPool.id,
+        tokenAddresses,
+        amountsIn
+      );
+      const sdkExecution = new Promise((resolve) =>
+        resolve(sdkPool.joinExactTokensInForBptOut(amountsIn))
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      amountsIn = {
+        DAI: "100000",
+        WETH: "500",
+      };
+    });
+
+    it("extreme values", () => {
+      amountsIn = {
+        DAI: "1",
+        WETH: "10000",
+      };
+    });
+  });
+
+  describe("joinTokenInForExactBptOut", () => {
+    let tokenIn: IWeightedPoolToken;
+    let bptOut: string;
+
+    afterEach(async () => {
+      const tokenAddresses = {};
+      for (const token of sdkPool.tokens) {
+        tokenAddresses[token.symbol] = token.address;
+      }
+
+      const evmExecution = query.joinTokenInForExactBptOut(
+        evmHelpers,
+        sdkPool.id,
+        tokenAddresses,
+        tokenIn.symbol,
+        bptOut
+      );
+      const sdkExecution = new Promise((resolve) =>
+        resolve(sdkPool.joinTokenInForExactBptOut(tokenIn.symbol, bptOut))
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      tokenIn = sdkPool.tokens[0];
+      bptOut = "10";
+    });
+
+    it("extreme values", () => {
+      tokenIn = sdkPool.tokens[1];
+      bptOut = "1000000000";
     });
   });
 });
