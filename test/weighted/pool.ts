@@ -3,7 +3,8 @@ import { Contract } from "ethers";
 import { ethers } from "hardhat";
 
 import WeightedPool, { IWeightedPoolToken } from "@pools/weighted";
-import { querySwapGivenIn } from "@utils/balancer";
+import * as query from "@utils/balancer-query";
+import { bn } from "@utils/big-number";
 import { isSameResult } from "@utils/test";
 
 describe("WeightedPool", () => {
@@ -51,7 +52,7 @@ describe("WeightedPool", () => {
     let amountIn: string;
 
     afterEach(async () => {
-      const evmExecution = querySwapGivenIn(
+      const evmExecution = query.swapGivenIn(
         evmVault,
         sdkPool.id,
         {
@@ -69,10 +70,59 @@ describe("WeightedPool", () => {
       expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
     });
 
-    it("simple values", async () => {
+    it("simple values", () => {
       tokenIn = sdkPool.tokens[0];
       tokenOut = sdkPool.tokens[1];
-      amountIn = "100";
+      // 0.1% of the balance
+      amountIn = bn(tokenIn.balance).div(1000).toString();
+    });
+
+    it("extreme values", () => {
+      tokenIn = sdkPool.tokens[1];
+      tokenOut = sdkPool.tokens[0];
+      // 50% of the balance
+      amountIn = bn(tokenIn.balance).div(2).toString();
+    });
+  });
+
+  describe("swapGivenOut", () => {
+    let tokenIn: IWeightedPoolToken;
+    let tokenOut: IWeightedPoolToken;
+    let amountOut: string;
+
+    afterEach(async () => {
+      const evmExecution = query.swapGivenOut(
+        evmVault,
+        sdkPool.id,
+        {
+          [tokenIn.symbol]: tokenIn.address,
+          [tokenOut.symbol]: tokenOut.address,
+        },
+        tokenIn.symbol,
+        tokenOut.symbol,
+        amountOut
+      );
+      const sdkExecution = new Promise((resolve) =>
+        resolve(
+          sdkPool.swapGivenOut(tokenIn.symbol, tokenOut.symbol, amountOut)
+        )
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      tokenIn = sdkPool.tokens[0];
+      tokenOut = sdkPool.tokens[1];
+      // 0.1% of the balance
+      amountOut = bn(tokenOut.balance).div(1000).toString();
+    });
+
+    it("extreme values", () => {
+      tokenIn = sdkPool.tokens[1];
+      tokenOut = sdkPool.tokens[0];
+      // 50% of the balance
+      amountOut = bn(tokenOut.balance).div(2).toString();
     });
   });
 });
