@@ -3,6 +3,8 @@
     "lib": ["es2019"],
     "module": "commonjs",
     "target": "es2018",
+    "noImplicitAny": true,
+    "skipLibCheck": true,
     "outDir": "dist",
     "baseUrl": "src",
     "paths": {
@@ -10,5 +12,6 @@
       "@subgraph/*": ["subgraph//*"],
       "@utils/*": ["utils/*"]
     }
-  }
+  },
+  "exclude": ["node_modules/**"]
 }

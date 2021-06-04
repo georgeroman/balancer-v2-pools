@@ -130,7 +130,7 @@ describe("WeightedPool", () => {
     let amountsIn: { [symbol: string]: string };
 
     afterEach(async () => {
-      const tokenAddresses = {};
+      const tokenAddresses: { [symbol: string]: string } = {};
       for (const symbol of Object.keys(amountsIn)) {
         tokenAddresses[symbol] = sdkPool.tokens.find(
           (t) => t.symbol === symbol
@@ -170,7 +170,7 @@ describe("WeightedPool", () => {
     let bptOut: string;
 
     afterEach(async () => {
-      const tokenAddresses = {};
+      const tokenAddresses: { [symbol: string]: string } = {};
       for (const token of sdkPool.tokens) {
         tokenAddresses[token.symbol] = token.address;
       }
@@ -197,6 +197,111 @@ describe("WeightedPool", () => {
     it("extreme values", () => {
       tokenIn = sdkPool.tokens[1];
       bptOut = "1000000000";
+    });
+  });
+
+  describe("exitExactBptInForTokenOut", () => {
+    let tokenOut: IWeightedPoolToken;
+    let bptIn: string;
+
+    afterEach(async () => {
+      const tokenAddresses: { [symbol: string]: string } = {};
+      for (const token of sdkPool.tokens) {
+        tokenAddresses[token.symbol] = token.address;
+      }
+
+      const evmExecution = query.exitExactBptInForTokenOut(
+        evmHelpers,
+        sdkPool.id,
+        tokenAddresses,
+        tokenOut.symbol,
+        bptIn
+      );
+      const sdkExecution = new Promise((resolve) =>
+        resolve(sdkPool.exitExactBptInForTokenOut(tokenOut.symbol, bptIn))
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      tokenOut = sdkPool.tokens[0];
+      bptIn = "100";
+    });
+
+    it("extreme values", () => {
+      tokenOut = sdkPool.tokens[1];
+      bptIn = "10000000";
+    });
+  });
+
+  describe("exitExactBptInForTokensOut", () => {
+    let bptIn: string;
+
+    afterEach(async () => {
+      const tokenAddresses: { [symbol: string]: string } = {};
+      for (const token of sdkPool.tokens) {
+        tokenAddresses[token.symbol] = token.address;
+      }
+
+      const evmExecution = query.exitExactBptInForTokensOut(
+        evmHelpers,
+        sdkPool.id,
+        tokenAddresses,
+        bptIn
+      );
+      const sdkExecution = new Promise((resolve) =>
+        resolve(sdkPool.exitExactBptInForTokensOut(bptIn))
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      bptIn = "1000";
+    });
+
+    it("extreme values", () => {
+      bptIn = "99999999";
+    });
+  });
+
+  describe("exitBptInForExactTokensOut", () => {
+    let amountsOut: { [symbol: string]: string };
+
+    afterEach(async () => {
+      const tokenAddresses: { [symbol: string]: string } = {};
+      for (const symbol of Object.keys(amountsOut)) {
+        tokenAddresses[symbol] = sdkPool.tokens.find(
+          (t) => t.symbol === symbol
+        )!.address;
+      }
+
+      const evmExecution = query.exitBptInForExactTokensOut(
+        evmHelpers,
+        sdkPool.id,
+        tokenAddresses,
+        amountsOut
+      );
+      const sdkExecution = new Promise((resolve) =>
+        resolve(sdkPool.exitBptInForExactTokensOut(amountsOut))
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      amountsOut = {
+        DAI: "100000",
+        WETH: "100",
+      };
+    });
+
+    it("extreme values", () => {
+      amountsOut = {
+        DAI: "100000000",
+        WETH: "100000000",
+      };
     });
   });
 });

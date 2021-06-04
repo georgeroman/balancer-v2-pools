@@ -238,7 +238,7 @@ export default class WeightedPool extends BasePool {
       scale(tokenOut.weight, 18),
       scale(bptIn, 18),
       scale(this._bptTotalSupply, 18),
-      scale(this._swapFeePercentage, 19)
+      scale(this._swapFeePercentage, 18)
     );
     const amountOut = scale(scaledAmountOut, -18);
 
@@ -254,6 +254,11 @@ export default class WeightedPool extends BasePool {
   }
 
   public exitExactBptInForTokensOut(bptIn: string): string[] {
+    // Exactly match the EVM version
+    if (bn(bptIn).gt(this._bptTotalSupply)) {
+      throw new Error("BPT in exceeds total supply");
+    }
+
     const scaledAmountsOut = math._calcTokensOutGivenExactBptIn(
       this._tokens.map((t) => scale(t.balance, t.decimals)),
       scale(bptIn, 18),
@@ -265,9 +270,7 @@ export default class WeightedPool extends BasePool {
       // Update the token balances
       for (let i = 0; i < this._tokens.length; i++) {
         const token = this._tokens[i];
-        token.balance = bn(token.balance)
-          .minus(amountsOut[token.symbol])
-          .toString();
+        token.balance = bn(token.balance).minus(amountsOut[i]).toString();
       }
 
       // Update the BPT supply
