@@ -19,6 +19,9 @@ export const add = (a: BigNumber, b: BigNumber): BigNumber => {
 
 export const sub = (a: BigNumber, b: BigNumber): BigNumber => {
   // Fixed Point subtraction is the same as regular checked subtraction
+  if (b.gt(a)) {
+    throw new Error("SUB_OVERFLOW");
+  }
   return a.minus(b);
 };
 
@@ -42,6 +45,9 @@ export const mulUp = (a: BigNumber, b: BigNumber): BigNumber => {
 };
 
 export const divDown = (a: BigNumber, b: BigNumber): BigNumber => {
+  if (b.isZero()) {
+    throw new Error("ZERO_DIVISION");
+  }
   if (a.isZero()) {
     return a;
   } else {
@@ -50,6 +56,9 @@ export const divDown = (a: BigNumber, b: BigNumber): BigNumber => {
 };
 
 export const divUp = (a: BigNumber, b: BigNumber): BigNumber => {
+  if (b.isZero()) {
+    throw new Error("ZERO_DIVISION");
+  }
   if (a.isZero()) {
     return a;
   } else {
