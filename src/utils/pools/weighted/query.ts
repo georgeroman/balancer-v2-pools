@@ -152,8 +152,6 @@ export const exitBptInForExactTokensOut = async (
   return ethers.utils.formatEther(result.bptIn).toString();
 };
 
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-
 const queryBatchSwap = async (
   vault: Contract,
   poolId: string,
@@ -178,9 +176,9 @@ const queryBatchSwap = async (
     ],
     [tokens[tokenInSymbol], tokens[tokenOutSymbol]],
     {
-      sender: ZERO_ADDRESS,
+      sender: ethers.constants.AddressZero,
       fromInternalBalance: false,
-      recipient: ZERO_ADDRESS,
+      recipient: ethers.constants.AddressZero,
       toInternalBalance: false,
     }
   );
@@ -196,12 +194,17 @@ const queryJoin = async (
   const maxAmountsIn = tokenAddresses.map(() => "0");
 
   // Returns: { bptOut, amountsIn }
-  return helpers.queryJoin(poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
-    assets: tokenAddresses,
-    maxAmountsIn,
-    fromInternalBalance: false,
-    userData,
-  });
+  return helpers.queryJoin(
+    poolId,
+    ethers.constants.AddressZero,
+    ethers.constants.AddressZero,
+    {
+      assets: tokenAddresses,
+      maxAmountsIn,
+      fromInternalBalance: false,
+      userData,
+    }
+  );
 };
 
 const queryExit = async (
@@ -214,10 +217,15 @@ const queryExit = async (
   const minAmountsOut = tokenAddresses.map(() => "0");
 
   // Returns { bptIn, amountsOut }
-  return helpers.queryExit(poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
-    assets: tokenAddresses,
-    minAmountsOut,
-    toInternalBalance: false,
-    userData,
-  });
+  return helpers.queryExit(
+    poolId,
+    ethers.constants.AddressZero,
+    ethers.constants.AddressZero,
+    {
+      assets: tokenAddresses,
+      minAmountsOut,
+      toInternalBalance: false,
+      userData,
+    }
+  );
 };

@@ -5,6 +5,7 @@ import BigNumber, { bn } from "@utils/big-number";
 
 export const ZERO = bn(0);
 export const ONE = bn(1);
+export const TWO = bn(2);
 
 export const add = (a: BigNumber, b: BigNumber): BigNumber => {
   return a.plus(b);
