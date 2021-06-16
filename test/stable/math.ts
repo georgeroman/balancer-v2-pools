@@ -13,6 +13,8 @@ describe("StableMath", () => {
 
   let evmStableMath: Contract;
 
+  const adjustAmp = (amp: string) => bn(amp).times(sdkStableMath.AMP_PRECISION);
+
   before(async () => {
     [deployer] = await ethers.getSigners();
 
@@ -31,7 +33,7 @@ describe("StableMath", () => {
       const roundUp = !!Math.round(Math.random());
 
       const evmExecution = evmStableMath._calculateInvariant(
-        toEvmBn(bn(amplificationParameter)),
+        toEvmBn(adjustAmp(amplificationParameter)),
         scaleAll(balances, 18).map(toEvmBn),
         roundUp
       );
@@ -39,7 +41,7 @@ describe("StableMath", () => {
       const sdkExecution = new Promise((resolve) =>
         resolve(
           sdkStableMath._calculateInvariant(
-            bn(amplificationParameter),
+            adjustAmp(amplificationParameter),
             scaleAll(balances, 18),
             roundUp
           )
@@ -50,17 +52,17 @@ describe("StableMath", () => {
     });
 
     it("two tokens", () => {
-      amplificationParameter = "100000";
+      amplificationParameter = "100";
       balances = ["1000", "1200"];
     });
 
     it("three tokens", () => {
-      amplificationParameter = "50000";
+      amplificationParameter = "50";
       balances = ["1000", "1000", "2000"];
     });
 
     it("empty invariant", () => {
-      amplificationParameter = "99000";
+      amplificationParameter = "99";
       balances = [];
     });
   });
@@ -74,7 +76,7 @@ describe("StableMath", () => {
 
     afterEach(async () => {
       const evmExecution = evmStableMath._calcOutGivenIn(
-        toEvmBn(bn(amplificationParameter)),
+        toEvmBn(adjustAmp(amplificationParameter)),
         scaleAll(balances, 18).map(toEvmBn),
         tokenIndexIn,
         tokenIndexOut,
@@ -83,7 +85,7 @@ describe("StableMath", () => {
       const sdkExecution = new Promise((resolve) =>
         resolve(
           sdkStableMath._calcOutGivenIn(
-            bn(amplificationParameter),
+            adjustAmp(amplificationParameter),
             scaleAll(balances, 18),
             tokenIndexIn,
             tokenIndexOut,
@@ -96,7 +98,7 @@ describe("StableMath", () => {
     });
 
     it("two tokens", () => {
-      amplificationParameter = "760000";
+      amplificationParameter = "760";
       balances = ["1000", "1200"];
       tokenIndexIn = 0;
       tokenIndexOut = 1;
@@ -104,7 +106,7 @@ describe("StableMath", () => {
     });
 
     it("three tokens", () => {
-      amplificationParameter = "1000000";
+      amplificationParameter = "1000";
       balances = ["1000", "1500", "2000"];
       tokenIndexIn = 1;
       tokenIndexOut = 2;
@@ -121,7 +123,7 @@ describe("StableMath", () => {
 
     afterEach(async () => {
       const evmExecution = evmStableMath._calcOutGivenIn(
-        toEvmBn(bn(amplificationParameter)),
+        toEvmBn(adjustAmp(amplificationParameter)),
         scaleAll(balances, 18).map(toEvmBn),
         tokenIndexIn,
         tokenIndexOut,
@@ -130,7 +132,7 @@ describe("StableMath", () => {
       const sdkExecution = new Promise((resolve) =>
         resolve(
           sdkStableMath._calcOutGivenIn(
-            bn(amplificationParameter),
+            adjustAmp(amplificationParameter),
             scaleAll(balances, 18),
             tokenIndexIn,
             tokenIndexOut,
@@ -143,7 +145,7 @@ describe("StableMath", () => {
     });
 
     it("two tokens", () => {
-      amplificationParameter = "1000000";
+      amplificationParameter = "1000";
       balances = ["1000", "1200"];
       tokenIndexIn = 1;
       tokenIndexOut = 0;
@@ -151,7 +153,7 @@ describe("StableMath", () => {
     });
 
     it("three tokens", () => {
-      amplificationParameter = "500000";
+      amplificationParameter = "500";
       balances = ["10000", "15000", "20000"];
       tokenIndexIn = 0;
       tokenIndexOut = 2;
@@ -168,7 +170,7 @@ describe("StableMath", () => {
 
     afterEach(async () => {
       const evmExecution = evmStableMath._calcBptOutGivenExactTokensIn(
-        toEvmBn(bn(amp)),
+        toEvmBn(adjustAmp(amp)),
         scaleAll(balances, 18).map(toEvmBn),
         scaleAll(amountsIn, 18).map(toEvmBn),
         toEvmBn(scale(bptTotalSupply, 18)),
@@ -177,7 +179,7 @@ describe("StableMath", () => {
       const sdkExecution = new Promise((resolve) =>
         resolve(
           sdkStableMath._calcBptOutGivenExactTokensIn(
-            bn(amp),
+            adjustAmp(amp),
             scaleAll(balances, 18),
             scaleAll(amountsIn, 18),
             scale(bptTotalSupply, 18),
@@ -190,7 +192,7 @@ describe("StableMath", () => {
     });
 
     it("simple values", () => {
-      amp = "99000";
+      amp = "99";
       balances = ["100", "200", "300"];
       amountsIn = ["50", "100", "100"];
       bptTotalSupply = "1000";
@@ -208,7 +210,7 @@ describe("StableMath", () => {
 
     afterEach(async () => {
       const evmExecution = evmStableMath._calcTokenInGivenExactBptOut(
-        toEvmBn(bn(amp)),
+        toEvmBn(adjustAmp(amp)),
         scaleAll(balances, 18).map(toEvmBn),
         tokenIndex,
         toEvmBn(scale(bptAmountOut, 18)),
@@ -218,7 +220,7 @@ describe("StableMath", () => {
       const sdkExecution = new Promise((resolve) =>
         resolve(
           sdkStableMath._calcTokenInGivenExactBptOut(
-            bn(amp),
+            adjustAmp(amp),
             scaleAll(balances, 18),
             tokenIndex,
             scale(bptAmountOut, 18),
@@ -232,7 +234,7 @@ describe("StableMath", () => {
     });
 
     it("simple values", () => {
-      amp = "100000";
+      amp = "100";
       balances = ["100", "200", "300"];
       tokenIndex = 1;
       bptAmountOut = "10";
@@ -250,7 +252,7 @@ describe("StableMath", () => {
 
     afterEach(async () => {
       const evmExecution = evmStableMath._calcBptInGivenExactTokensOut(
-        toEvmBn(bn(amp)),
+        toEvmBn(adjustAmp(amp)),
         scaleAll(balances, 18).map(toEvmBn),
         scaleAll(amountsOut, 18).map(toEvmBn),
         toEvmBn(scale(bptTotalSupply, 18)),
@@ -259,7 +261,7 @@ describe("StableMath", () => {
       const sdkExecution = new Promise((resolve) =>
         resolve(
           sdkStableMath._calcBptInGivenExactTokensOut(
-            bn(amp),
+            adjustAmp(amp),
             scaleAll(balances, 18),
             scaleAll(amountsOut, 18),
             scale(bptTotalSupply, 18),
@@ -272,7 +274,7 @@ describe("StableMath", () => {
     });
 
     it("simple values", () => {
-      amp = "23000";
+      amp = "23";
       balances = ["10", "50", "60"];
       amountsOut = ["50", "100", "100"];
       bptTotalSupply = "100";
@@ -290,7 +292,7 @@ describe("StableMath", () => {
 
     afterEach(async () => {
       const evmExecution = evmStableMath._calcTokenOutGivenExactBptIn(
-        toEvmBn(bn(amp)),
+        toEvmBn(adjustAmp(amp)),
         scaleAll(balances, 18).map(toEvmBn),
         tokenIndex,
         toEvmBn(scale(bptAmountIn, 18)),
@@ -300,7 +302,7 @@ describe("StableMath", () => {
       const sdkExecution = new Promise((resolve) =>
         resolve(
           sdkStableMath._calcTokenOutGivenExactBptIn(
-            bn(amp),
+            adjustAmp(amp),
             scaleAll(balances, 18),
             tokenIndex,
             scale(bptAmountIn, 18),
@@ -314,7 +316,7 @@ describe("StableMath", () => {
     });
 
     it("simple values", () => {
-      amp = "100000";
+      amp = "100";
       balances = ["10", "11", "12", "13", "14"];
       tokenIndex = 3;
       bptAmountIn = "10";
@@ -363,7 +365,7 @@ describe("StableMath", () => {
 
     afterEach(async () => {
       const evmExecution = evmStableMath._calcDueTokenProtocolSwapFeeAmount(
-        toEvmBn(bn(amplificationParameter)),
+        toEvmBn(adjustAmp(amplificationParameter)),
         scaleAll(balances, 18).map(toEvmBn),
         toEvmBn(scale(lastInvariant, 18)),
         tokenIndex,
@@ -372,7 +374,7 @@ describe("StableMath", () => {
       const sdkExecution = new Promise((resolve) =>
         resolve(
           sdkStableMath._calcDueTokenProtocolSwapFeeAmount(
-            bn(amplificationParameter),
+            adjustAmp(amplificationParameter),
             scaleAll(balances, 18),
             scale(lastInvariant, 18),
             tokenIndex,
@@ -385,7 +387,7 @@ describe("StableMath", () => {
     });
 
     it("two tokens", () => {
-      amplificationParameter = "95000";
+      amplificationParameter = "95";
       balances = ["100", "150"];
       lastInvariant = "100";
       tokenIndex = 0;
@@ -393,7 +395,7 @@ describe("StableMath", () => {
     });
 
     it("three tokens", () => {
-      amplificationParameter = "100000";
+      amplificationParameter = "100";
       balances = ["1000", "1500", "2000"];
       lastInvariant = "1000";
       tokenIndex = 2;

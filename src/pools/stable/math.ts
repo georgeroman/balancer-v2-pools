@@ -5,11 +5,11 @@ import BigNumber, { bn } from "../../utils/big-number";
 import * as fp from "../../utils/math/fixed-point";
 import * as math from "../../utils/math/math";
 
-const MIN_AMP = bn(1);
-const MAX_AMP = bn(5000);
-const AMP_PRECISION = bn(1000);
+export const MIN_AMP = bn(1);
+export const MAX_AMP = bn(5000);
+export const AMP_PRECISION = bn(1000);
 
-const MAX_STABLE_TOKENS = 5;
+export const MAX_STABLE_TOKENS = 5;
 
 // Computes the invariant given the current balances, using the Newton-Raphson approximation.
 // The amplification parameter equals: A n^(n-1)
