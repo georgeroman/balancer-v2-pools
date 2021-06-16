@@ -1,26 +1,19 @@
 import BasePool, { IBasePoolParams, IBasePoolToken } from "@pools/base";
-import * as math from "@pools/weighted/math";
+import * as math from "@pools/stable/math";
 import { getPool } from "@subgraph/index";
 import { bn, scale } from "@utils/big-number";
 import { shallowCopyAll } from "@utils/common";
 
-export interface IWeightedPoolToken extends IBasePoolToken {
-  weight: string;
+export interface IStablePoolToken extends IBasePoolToken {}
+
+export interface IStablePoolParams extends IBasePoolParams {
+  tokens: IStablePoolToken[];
+  amplificationParameter: string;
 }
 
-export interface IWeightedPoolParams extends IBasePoolParams {
-  tokens: IWeightedPoolToken[];
-}
-
-export default class WeightedPool extends BasePool {
-  private MIN_TOKENS = 2;
-  private MAX_TOKENS = 8;
-
-  // A minimum normalized weight imposes a maximum weight ratio
-  // We need this due to limitations in the implementation of the power function, as these ratios are often exponents
-  private MIN_WEIGHT = bn("0.01"); // 0.01e18
-
-  private _tokens: IWeightedPoolToken[];
+export default class StablePool extends BasePool {
+  private _tokens: IStablePoolToken[];
+  private _amplificationParameter: string;
 
   // ---------------------- Getters ----------------------
 
@@ -29,31 +22,31 @@ export default class WeightedPool extends BasePool {
     return shallowCopyAll(this._tokens);
   }
 
+  get amplificationParameter() {
+    return this._amplificationParameter;
+  }
+
   // ---------------------- Constructor ----------------------
 
-  constructor(params: IWeightedPoolParams) {
+  constructor(params: IStablePoolParams) {
     super(params);
 
-    if (params.tokens.length < this.MIN_TOKENS) {
-      throw new Error("MIN_TOKENS");
-    }
-    if (params.tokens.length > this.MAX_TOKENS) {
-      throw new Error("MAX_TOKENS");
+    if (params.tokens.length < math.MAX_STABLE_TOKENS) {
+      throw new Error("MAX_STABLE_TOKENS");
     }
 
     this._tokens = shallowCopyAll(params.tokens);
 
-    let normalizedSum = bn(0);
-    for (let i = 0; i < params.tokens.length; i++) {
-      if (bn(params.tokens[i].weight).lt(this.MIN_WEIGHT)) {
-        throw new Error("MIN_WEIGHT");
-      }
-      normalizedSum = normalizedSum.plus(params.tokens[i].weight);
+    if (bn(params.amplificationParameter).lt(math.MIN_AMP)) {
+      throw new Error("MIN_AMP");
+    }
+    if (bn(params.amplificationParameter).gt(math.MAX_AMP)) {
+      throw new Error("MAX_AMP");
     }
 
-    if (!normalizedSum.eq(1)) {
-      throw new Error("NORMALIZED_WEIGHT_INVARIANT");
-    }
+    this._amplificationParameter = bn(params.amplificationParameter)
+      .times(math.AMP_PRECISION)
+      .toString();
   }
 
   // ---------------------- Subgraph initializer ----------------------
@@ -62,46 +55,36 @@ export default class WeightedPool extends BasePool {
     poolId: string,
     query = false,
     blockNumber?: number
-  ): Promise<WeightedPool> {
+  ): Promise<StablePool> {
     const pool = await getPool(poolId, blockNumber);
     if (!pool) {
       throw new Error("Could not fetch pool data");
     }
 
-    if (pool.poolType !== "Weighted") {
-      throw new Error("Pool must be weighted");
+    if (pool.poolType !== "Stable") {
+      throw new Error("Pool must be stable");
     }
 
     const id = pool.id;
     const address = pool.address;
     const bptTotalSupply = pool.totalShares;
     const swapFeePercentage = pool.swapFee;
+    const amplificationParameter = pool.amp;
 
-    const tokens: IWeightedPoolToken[] = [];
+    const tokens: IStablePoolToken[] = [];
     for (const token of pool.tokens) {
-      tokens.push(token as IWeightedPoolToken);
+      tokens.push(token as IStablePoolToken);
     }
 
-    return new WeightedPool({
+    return new StablePool({
       id,
       address,
       tokens,
       bptTotalSupply,
       swapFeePercentage,
+      amplificationParameter,
       query,
     });
-  }
-
-  // ---------------------- Misc ----------------------
-
-  public getInvariant(): string {
-    const scaledInvariant = math._calculateInvariant(
-      this._tokens.map((t) => scale(t.weight, 18)),
-      this._tokens.map((t) => scale(t.balance, t.decimals))
-    );
-    const invariant = scale(scaledInvariant, -18);
-
-    return invariant.toString();
   }
 
   // ---------------------- Swap actions ----------------------
@@ -111,8 +94,15 @@ export default class WeightedPool extends BasePool {
     tokenOutSymbol: string,
     amountIn: string
   ): string {
-    const tokenIn = this._tokens.find((t) => t.symbol === tokenInSymbol);
-    const tokenOut = this._tokens.find((t) => t.symbol === tokenOutSymbol);
+    const tokenIndexIn = this._tokens.findIndex(
+      (t) => t.symbol === tokenInSymbol
+    );
+    const tokenIndexOut = this._tokens.findIndex(
+      (t) => t.symbol === tokenOutSymbol
+    );
+
+    const tokenIn = this._tokens[tokenIndexIn];
+    const tokenOut = this._tokens[tokenIndexOut];
 
     const scaledAmountIn = scale(amountIn, tokenIn.decimals);
     const scaledAmountInWithFee = this._subtractSwapFeePercentage(
@@ -121,10 +111,10 @@ export default class WeightedPool extends BasePool {
     );
 
     const scaledAmountOut = math._calcOutGivenIn(
-      scale(tokenIn.balance, tokenIn.decimals),
-      scale(tokenIn.weight, 18),
-      scale(tokenOut.balance, tokenOut.decimals),
-      scale(tokenOut.weight, 18),
+      bn(this._amplificationParameter),
+      this._tokens.map((t) => scale(t.balance, t.decimals)),
+      tokenIndexIn,
+      tokenIndexOut,
       scaledAmountInWithFee
     );
     const amountOut = scale(scaledAmountOut, -18);
@@ -142,16 +132,23 @@ export default class WeightedPool extends BasePool {
     tokenOutSymbol: string,
     amountOut: string
   ): string {
-    const tokenIn = this._tokens.find((t) => t.symbol === tokenInSymbol);
-    const tokenOut = this._tokens.find((t) => t.symbol === tokenOutSymbol);
+    const tokenIndexIn = this._tokens.findIndex(
+      (t) => t.symbol === tokenInSymbol
+    );
+    const tokenIndexOut = this._tokens.findIndex(
+      (t) => t.symbol === tokenOutSymbol
+    );
+
+    const tokenIn = this._tokens[tokenIndexIn];
+    const tokenOut = this._tokens[tokenIndexOut];
 
     const scaledAmountOut = scale(amountOut, tokenOut.decimals);
 
     const scaledAmountIn = math._calcInGivenOut(
-      scale(tokenIn.balance, tokenIn.decimals),
-      scale(tokenIn.weight, 18),
-      scale(tokenOut.balance, tokenOut.decimals),
-      scale(tokenOut.weight, 18),
+      bn(this._amplificationParameter),
+      this._tokens.map((t) => scale(t.balance, t.decimals)),
+      tokenIndexIn,
+      tokenIndexOut,
       scaledAmountOut
     );
 
@@ -179,8 +176,8 @@ export default class WeightedPool extends BasePool {
     }
 
     const scaledBptOut = math._calcBptOutGivenExactTokensIn(
+      bn(this._amplificationParameter),
       this._tokens.map((t) => scale(t.balance, t.decimals)),
-      this._tokens.map((t) => scale(t.weight, 18)),
       this._tokens.map((t) => scale(amountsIn[t.symbol], t.decimals)),
       scale(this._bptTotalSupply, 18),
       scale(this._swapFeePercentage, 18)
@@ -205,14 +202,19 @@ export default class WeightedPool extends BasePool {
     tokenInSymbol: string,
     bptOut: string
   ): string {
-    const tokenIn = this._tokens.find((t) => t.symbol === tokenInSymbol);
+    const tokenIndex = this._tokens.findIndex(
+      (t) => t.symbol === tokenInSymbol
+    );
+
+    const tokenIn = this._tokens[tokenIndex];
     if (!tokenIn) {
       throw new Error("Invalid input");
     }
 
     const scaledAmountIn = math._calcTokenInGivenExactBptOut(
-      scale(tokenIn.balance, tokenIn.decimals),
-      scale(tokenIn.weight, 18),
+      bn(this._amplificationParameter),
+      this._tokens.map((t) => scale(t.balance, t.decimals)),
+      tokenIndex,
       scale(bptOut, 18),
       scale(this._bptTotalSupply, 18),
       scale(this._swapFeePercentage, 18)
@@ -232,14 +234,19 @@ export default class WeightedPool extends BasePool {
     tokenOutSymbol: string,
     bptIn: string
   ): string {
-    const tokenOut = this._tokens.find((t) => t.symbol === tokenOutSymbol);
+    const tokenIndex = this._tokens.findIndex(
+      (t) => t.symbol === tokenOutSymbol
+    );
+
+    const tokenOut = this._tokens[tokenIndex];
     if (!tokenOut) {
       throw new Error("Invalid input");
     }
 
     const scaledAmountOut = math._calcTokenOutGivenExactBptIn(
-      scale(tokenOut.balance, tokenOut.decimals),
-      scale(tokenOut.weight, 18),
+      bn(this._amplificationParameter),
+      this._tokens.map((t) => scale(t.balance, t.decimals)),
+      tokenIndex,
       scale(bptIn, 18),
       scale(this._bptTotalSupply, 18),
       scale(this._swapFeePercentage, 18)
@@ -288,8 +295,8 @@ export default class WeightedPool extends BasePool {
     }
 
     const scaledBptIn = math._calcBptInGivenExactTokensOut(
+      bn(this._amplificationParameter),
       this._tokens.map((t) => scale(t.balance, t.decimals)),
-      this._tokens.map((t) => scale(t.weight, 18)),
       this._tokens.map((t) => scale(amountsOut[t.symbol], t.decimals)),
       scale(this._bptTotalSupply, 18),
       scale(this._swapFeePercentage, 18)

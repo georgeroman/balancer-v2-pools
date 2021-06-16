@@ -18,9 +18,6 @@ export interface IBasePoolParams {
 }
 
 export default abstract class BasePool {
-  private MIN_TOKENS = 2;
-  private MAX_TOKENS = 8;
-
   private MIN_SWAP_FEE_PERCENTAGE = bn("0.000001"); // 0.0001%
   private MAX_SWAP_FEE_PERCENTAGE = bn("0.1"); // 10%
 
@@ -55,13 +52,6 @@ export default abstract class BasePool {
   // ---------------------- Constructor ----------------------
 
   constructor(params: IBasePoolParams) {
-    if (params.tokens.length < this.MIN_TOKENS) {
-      throw new Error("MIN_TOKENS");
-    }
-    if (params.tokens.length > this.MAX_TOKENS) {
-      throw new Error("MAX_TOKENS");
-    }
-
     this._id = params.id;
     this._address = params.address;
     this._bptTotalSupply = params.bptTotalSupply;

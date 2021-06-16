@@ -10,6 +10,7 @@ export const getPool = async (
     poolType
     swapFee
     totalShares
+    amp
     tokens {
       id
       address
