@@ -61,9 +61,10 @@ export default class WeightedPool extends BasePool {
   public static async initFromRealPool(
     poolId: string,
     query = false,
-    blockNumber?: number
+    blockNumber?: number,
+    testnet?: boolean
   ): Promise<WeightedPool> {
-    const pool = await getPool(poolId, blockNumber);
+    const pool = await getPool(poolId, blockNumber, testnet);
     if (!pool) {
       throw new Error("Could not fetch pool data");
     }
@@ -79,7 +80,13 @@ export default class WeightedPool extends BasePool {
 
     const tokens: IWeightedPoolToken[] = [];
     for (const token of pool.tokens) {
-      tokens.push(token as IWeightedPoolToken);
+      tokens.push({
+        address: token.address,
+        symbol: token.symbol,
+        balance: token.balance,
+        decimals: token.decimals,
+        weight: token.weight,
+      });
     }
 
     return new WeightedPool({
@@ -95,12 +102,10 @@ export default class WeightedPool extends BasePool {
   // ---------------------- Misc ----------------------
 
   public getInvariant(): string {
-    const scaledInvariant = math._calculateInvariant(
-      this._tokens.map((t) => scale(t.weight, 18)),
-      this._tokens.map((t) => scale(t.balance, t.decimals))
+    const invariant = math._calculateInvariant(
+      this._tokens.map((t) => this._upScale(t.weight, 18)),
+      this._tokens.map((t) => this._upScale(t.balance, t.decimals))
     );
-    const invariant = scale(scaledInvariant, -18);
-
     return invariant.toString();
   }
 
@@ -114,21 +119,21 @@ export default class WeightedPool extends BasePool {
     const tokenIn = this._tokens.find((t) => t.symbol === tokenInSymbol);
     const tokenOut = this._tokens.find((t) => t.symbol === tokenOutSymbol);
 
-    const scaledAmountIn = scale(amountIn, tokenIn.decimals);
-    const scaledAmountInWithFee = this._subtractSwapFeePercentage(
-      scaledAmountIn,
-      scale(this._swapFeePercentage, 18)
+    const scaledAmountInMinusFee = this._subtractSwapFeePercentage(
+      this._upScale(amountIn, tokenIn.decimals),
+      this._upScale(this._swapFeePercentage, 18)
     );
 
     const scaledAmountOut = math._calcOutGivenIn(
-      scale(tokenIn.balance, tokenIn.decimals),
-      scale(tokenIn.weight, 18),
-      scale(tokenOut.balance, tokenOut.decimals),
-      scale(tokenOut.weight, 18),
-      scaledAmountInWithFee
+      this._upScale(tokenIn.balance, tokenIn.decimals),
+      this._upScale(tokenIn.weight, 18),
+      this._upScale(tokenOut.balance, tokenOut.decimals),
+      this._upScale(tokenOut.weight, 18),
+      scaledAmountInMinusFee
     );
-    const amountOut = scale(scaledAmountOut, -18);
+    const amountOut = this._downScaleDown(scaledAmountOut, tokenOut.decimals);
 
+    // In-place balance updates
     if (!this._query) {
       tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
       tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
@@ -145,22 +150,21 @@ export default class WeightedPool extends BasePool {
     const tokenIn = this._tokens.find((t) => t.symbol === tokenInSymbol);
     const tokenOut = this._tokens.find((t) => t.symbol === tokenOutSymbol);
 
-    const scaledAmountOut = scale(amountOut, tokenOut.decimals);
-
     const scaledAmountIn = math._calcInGivenOut(
-      scale(tokenIn.balance, tokenIn.decimals),
-      scale(tokenIn.weight, 18),
-      scale(tokenOut.balance, tokenOut.decimals),
-      scale(tokenOut.weight, 18),
-      scaledAmountOut
+      this._upScale(tokenIn.balance, tokenIn.decimals),
+      this._upScale(tokenIn.weight, 18),
+      this._upScale(tokenOut.balance, tokenOut.decimals),
+      this._upScale(tokenOut.weight, 18),
+      this._upScale(amountOut, tokenOut.decimals)
     );
 
-    const scaledAmountInWithFee = this._addSwapFeePercentage(
+    const scaledAmountInPlusFee = this._addSwapFeePercentage(
       scaledAmountIn,
-      scale(this._swapFeePercentage, 18)
+      this._upScale(this._swapFeePercentage, 18)
     );
-    const amountIn = scale(scaledAmountInWithFee, -18);
+    const amountIn = this._downScaleUp(scaledAmountInPlusFee, tokenIn.decimals);
 
+    // In-place balance updates
     if (!this._query) {
       tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
       tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
@@ -179,14 +183,15 @@ export default class WeightedPool extends BasePool {
     }
 
     const scaledBptOut = math._calcBptOutGivenExactTokensIn(
-      this._tokens.map((t) => scale(t.balance, t.decimals)),
-      this._tokens.map((t) => scale(t.weight, 18)),
-      this._tokens.map((t) => scale(amountsIn[t.symbol], t.decimals)),
-      scale(this._bptTotalSupply, 18),
-      scale(this._swapFeePercentage, 18)
+      this._tokens.map((t) => this._upScale(t.balance, t.decimals)),
+      this._tokens.map((t) => this._upScale(t.weight, 18)),
+      this._tokens.map((t) => this._upScale(amountsIn[t.symbol], t.decimals)),
+      this._upScale(this._bptTotalSupply, 18),
+      this._upScale(this._swapFeePercentage, 18)
     );
-    const bptOut = scale(scaledBptOut, -18);
+    const bptOut = this._downScaleDown(scaledBptOut, 18);
 
+    // In-place balance updates
     if (!this._query) {
       for (let i = 0; i < this._tokens.length; i++) {
         const token = this._tokens[i];
@@ -194,7 +199,6 @@ export default class WeightedPool extends BasePool {
           .plus(amountsIn[token.symbol])
           .toString();
       }
-
       this._bptTotalSupply = bn(this._bptTotalSupply).plus(bptOut).toString();
     }
 
@@ -211,17 +215,17 @@ export default class WeightedPool extends BasePool {
     }
 
     const scaledAmountIn = math._calcTokenInGivenExactBptOut(
-      scale(tokenIn.balance, tokenIn.decimals),
-      scale(tokenIn.weight, 18),
-      scale(bptOut, 18),
-      scale(this._bptTotalSupply, 18),
-      scale(this._swapFeePercentage, 18)
+      this._upScale(tokenIn.balance, tokenIn.decimals),
+      this._upScale(tokenIn.weight, 18),
+      this._upScale(bptOut, 18),
+      this._upScale(this._bptTotalSupply, 18),
+      this._upScale(this._swapFeePercentage, 18)
     );
-    const amountIn = scale(scaledAmountIn, -18);
+    const amountIn = this._downScaleUp(scaledAmountIn, tokenIn.decimals);
 
+    // In-place balance updates
     if (!this._query) {
       tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
-
       this._bptTotalSupply = bn(this._bptTotalSupply).plus(bptOut).toString();
     }
 
@@ -238,17 +242,17 @@ export default class WeightedPool extends BasePool {
     }
 
     const scaledAmountOut = math._calcTokenOutGivenExactBptIn(
-      scale(tokenOut.balance, tokenOut.decimals),
-      scale(tokenOut.weight, 18),
-      scale(bptIn, 18),
-      scale(this._bptTotalSupply, 18),
-      scale(this._swapFeePercentage, 18)
+      this._upScale(tokenOut.balance, tokenOut.decimals),
+      this._upScale(tokenOut.weight, 18),
+      this._upScale(bptIn, 18),
+      this._upScale(this._bptTotalSupply, 18),
+      this._upScale(this._swapFeePercentage, 18)
     );
-    const amountOut = scale(scaledAmountOut, -18);
+    const amountOut = this._downScaleDown(scaledAmountOut, tokenOut.decimals);
 
+    // In-place balance updates
     if (!this._query) {
       tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
-
       this._bptTotalSupply = bn(this._bptTotalSupply).minus(bptIn).toString();
     }
 
@@ -262,18 +266,20 @@ export default class WeightedPool extends BasePool {
     }
 
     const scaledAmountsOut = math._calcTokensOutGivenExactBptIn(
-      this._tokens.map((t) => scale(t.balance, t.decimals)),
-      scale(bptIn, 18),
-      scale(this._bptTotalSupply, 18)
+      this._tokens.map((t) => this._upScale(t.balance, t.decimals)),
+      this._upScale(bptIn, 18),
+      this._upScale(this._bptTotalSupply, 18)
     );
-    const amountsOut = scaledAmountsOut.map((a) => scale(a, -18));
+    const amountsOut = scaledAmountsOut.map((amount, i) =>
+      this._downScaleDown(amount, this._tokens[i].decimals)
+    );
 
+    // In-place balance updates
     if (!this._query) {
       for (let i = 0; i < this._tokens.length; i++) {
         const token = this._tokens[i];
         token.balance = bn(token.balance).minus(amountsOut[i]).toString();
       }
-
       this._bptTotalSupply = bn(this._bptTotalSupply).minus(bptIn).toString();
     }
 
@@ -288,14 +294,15 @@ export default class WeightedPool extends BasePool {
     }
 
     const scaledBptIn = math._calcBptInGivenExactTokensOut(
-      this._tokens.map((t) => scale(t.balance, t.decimals)),
-      this._tokens.map((t) => scale(t.weight, 18)),
-      this._tokens.map((t) => scale(amountsOut[t.symbol], t.decimals)),
-      scale(this._bptTotalSupply, 18),
-      scale(this._swapFeePercentage, 18)
+      this._tokens.map((t) => this._upScale(t.balance, t.decimals)),
+      this._tokens.map((t) => this._upScale(t.weight, 18)),
+      this._tokens.map((t) => this._upScale(amountsOut[t.symbol], t.decimals)),
+      this._upScale(this._bptTotalSupply, 18),
+      this._upScale(this._swapFeePercentage, 18)
     );
-    const bptIn = scale(scaledBptIn, -18);
+    const bptIn = this._downScaleUp(scaledBptIn, 18);
 
+    // In-place balance updates
     if (!this._query) {
       for (let i = 0; i < this._tokens.length; i++) {
         const token = this._tokens[i];
@@ -303,7 +310,6 @@ export default class WeightedPool extends BasePool {
           .minus(amountsOut[token.symbol])
           .toString();
       }
-
       this._bptTotalSupply = bn(this._bptTotalSupply).minus(bptIn).toString();
     }
 

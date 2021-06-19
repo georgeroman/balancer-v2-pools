@@ -2,28 +2,29 @@ import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
 
-import WeightedPool, { IWeightedPoolToken } from "@pools/weighted";
+import StablePool, { IStablePoolToken } from "@pools/stable";
 import * as query from "@utils/pools/query";
 import { bn } from "@utils/big-number";
 import { isSameResult } from "@utils/test";
 
-describe("WeightedPool", () => {
-  let sdkPool: WeightedPool;
+describe("StablePool", () => {
+  let sdkPool: StablePool;
   let evmVault: Contract;
   let evmHelpers: Contract;
 
   before(async () => {
-    sdkPool = await WeightedPool.initFromRealPool(
-      // WETH/DAI 60/40 on Mainnet
-      "0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a",
+    sdkPool = await StablePool.initFromRealPool(
+      // DAI/USDC/USDT on Kovan
+      "0x1f648ce47c5886001f593af94927e710c51e39a70000000000000000000000c7",
       true,
-      Number(process.env.BLOCK_NUMBER)
+      Number(process.env.BLOCK_NUMBER),
+      true
     );
 
-    const vault = require("@balancer-labs/v2-deployments/deployed/mainnet/Vault.json");
+    const vault = require("@balancer-labs/v2-deployments/deployed/kovan/Vault.json");
     evmVault = await ethers.getContractAt(vault.abi, vault.address);
 
-    const helpers = require("@balancer-labs/v2-deployments/deployed/mainnet/BalancerHelpers.json");
+    const helpers = require("@balancer-labs/v2-deployments/deployed/kovan/BalancerHelpers.json");
     evmHelpers = await ethers.getContractAt(helpers.abi, helpers.address);
 
     // For some reason, the actual on-chain swap fee differs from what is
@@ -32,6 +33,7 @@ describe("WeightedPool", () => {
 
     const iface = new ethers.utils.Interface([
       "function getSwapFeePercentage() view returns (uint256)",
+      "function getAmplificationParameter() view returns (uint256,bool,uint256)",
     ]);
     const rawSwapFeePercentage = await ethers.provider.call({
       to: sdkPool.address,
@@ -47,8 +49,8 @@ describe("WeightedPool", () => {
   });
 
   describe("swapGivenIn", () => {
-    let tokenIn: IWeightedPoolToken;
-    let tokenOut: IWeightedPoolToken;
+    let tokenIn: IStablePoolToken;
+    let tokenOut: IStablePoolToken;
     let amountIn: string;
 
     afterEach(async () => {
@@ -83,8 +85,8 @@ describe("WeightedPool", () => {
   });
 
   describe("swapGivenOut", () => {
-    let tokenIn: IWeightedPoolToken;
-    let tokenOut: IWeightedPoolToken;
+    let tokenIn: IStablePoolToken;
+    let tokenOut: IStablePoolToken;
     let amountOut: string;
 
     afterEach(async () => {
@@ -153,7 +155,7 @@ describe("WeightedPool", () => {
   });
 
   describe("joinTokenInForExactBptOut", () => {
-    let tokenIn: IWeightedPoolToken;
+    let tokenIn: IStablePoolToken;
     let bptOut: string;
 
     afterEach(async () => {
@@ -183,7 +185,7 @@ describe("WeightedPool", () => {
   });
 
   describe("exitExactBptInForTokenOut", () => {
-    let tokenOut: IWeightedPoolToken;
+    let tokenOut: IStablePoolToken;
     let bptIn: string;
 
     afterEach(async () => {

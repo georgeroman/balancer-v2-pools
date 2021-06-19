@@ -106,11 +106,11 @@ describe("StableMath", () => {
     });
 
     it("three tokens", () => {
-      amplificationParameter = "1000";
-      balances = ["1000", "1500", "2000"];
+      amplificationParameter = "200";
+      balances = ["1000", "1000", "1000"];
       tokenIndexIn = 1;
       tokenIndexOut = 2;
-      tokenAmountIn = "500";
+      tokenAmountIn = "485";
     });
   });
 

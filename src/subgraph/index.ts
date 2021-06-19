@@ -2,7 +2,8 @@ import { gql, request } from "graphql-request";
 
 export const getPool = async (
   poolId: string,
-  blockNumber?: number
+  blockNumber?: number,
+  testnet?: boolean
 ): Promise<any> => {
   const data = `
     id
@@ -41,7 +42,9 @@ export const getPool = async (
   }
 
   const result = await request(
-    "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer-v2",
+    testnet
+      ? "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer-kovan-v2"
+      : "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer-v2",
     query,
     { poolId, blockNumber }
   );

@@ -42,14 +42,12 @@ export const divDown = (a: BigNumber, b: BigNumber): BigNumber => {
   if (b.isZero()) {
     throw new Error("ZERO_DIVISION");
   }
-  // Dividde by ONE to avoid trailing decimals
-  return a.div(b).idiv(ONE);
+  return a.idiv(b);
 };
 
 export const divUp = (a: BigNumber, b: BigNumber): BigNumber => {
   if (b.isZero()) {
     throw new Error("ZERO_DIVISION");
   }
-  // Dividde by ONE to avoid trailing decimals
-  return a.isZero() ? ZERO : ONE.plus(a.minus(ONE).div(b).idiv(ONE));
+  return a.isZero() ? ZERO : ONE.plus(a.minus(ONE).idiv(b));
 };

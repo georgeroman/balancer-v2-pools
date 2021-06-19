@@ -1,5 +1,6 @@
-import BigNumber, { bn } from "@utils/big-number";
+import BigNumber, { bn, scale } from "@utils/big-number";
 import * as fp from "@utils/math/fixed-point";
+import * as math from "@utils/math/math";
 
 export interface IBasePoolToken {
   address: string;
@@ -95,5 +96,26 @@ export default abstract class BasePool {
   ): BigNumber {
     // This returns amount - fee amount, so we round up (favoring a higher fee amount)
     return fp.sub(amount, fp.mulUp(amount, swapFeePercentage));
+  }
+
+  protected _upScale(amount: BigNumber | string, decimals: number): BigNumber {
+    return math.mul(scale(amount, decimals), bn(10).pow(18 - decimals));
+  }
+
+  protected _downScaleDown(
+    amount: BigNumber | string,
+    decimals: number
+  ): BigNumber {
+    return scale(
+      math.divDown(bn(amount), bn(10).pow(18 - decimals)),
+      -decimals
+    );
+  }
+
+  protected _downScaleUp(
+    amount: BigNumber | string,
+    decimals: number
+  ): BigNumber {
+    return scale(math.divUp(bn(amount), bn(10).pow(18 - decimals)), -decimals);
   }
 }

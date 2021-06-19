@@ -23,7 +23,7 @@ export default class StablePool extends BasePool {
   }
 
   get amplificationParameter() {
-    return this._amplificationParameter;
+    return bn(this._amplificationParameter).idiv(math.AMP_PRECISION).toString();
   }
 
   // ---------------------- Constructor ----------------------
@@ -31,7 +31,7 @@ export default class StablePool extends BasePool {
   constructor(params: IStablePoolParams) {
     super(params);
 
-    if (params.tokens.length < math.MAX_STABLE_TOKENS) {
+    if (params.tokens.length > math.MAX_STABLE_TOKENS) {
       throw new Error("MAX_STABLE_TOKENS");
     }
 
@@ -54,9 +54,10 @@ export default class StablePool extends BasePool {
   public static async initFromRealPool(
     poolId: string,
     query = false,
-    blockNumber?: number
+    blockNumber?: number,
+    testnet?: boolean
   ): Promise<StablePool> {
-    const pool = await getPool(poolId, blockNumber);
+    const pool = await getPool(poolId, blockNumber, testnet);
     if (!pool) {
       throw new Error("Could not fetch pool data");
     }
@@ -73,7 +74,12 @@ export default class StablePool extends BasePool {
 
     const tokens: IStablePoolToken[] = [];
     for (const token of pool.tokens) {
-      tokens.push(token as IStablePoolToken);
+      tokens.push({
+        address: token.address,
+        symbol: token.symbol,
+        balance: token.balance,
+        decimals: token.decimals,
+      });
     }
 
     return new StablePool({
@@ -104,21 +110,21 @@ export default class StablePool extends BasePool {
     const tokenIn = this._tokens[tokenIndexIn];
     const tokenOut = this._tokens[tokenIndexOut];
 
-    const scaledAmountIn = scale(amountIn, tokenIn.decimals);
-    const scaledAmountInWithFee = this._subtractSwapFeePercentage(
-      scaledAmountIn,
-      scale(this._swapFeePercentage, 18)
+    const scaledAmountInMinusFee = this._subtractSwapFeePercentage(
+      this._upScale(amountIn, tokenIn.decimals),
+      this._upScale(this._swapFeePercentage, 18)
     );
 
     const scaledAmountOut = math._calcOutGivenIn(
       bn(this._amplificationParameter),
-      this._tokens.map((t) => scale(t.balance, t.decimals)),
+      this._tokens.map((t) => this._upScale(t.balance, t.decimals)),
       tokenIndexIn,
       tokenIndexOut,
-      scaledAmountInWithFee
+      scaledAmountInMinusFee
     );
-    const amountOut = scale(scaledAmountOut, -18);
+    const amountOut = this._downScaleDown(scaledAmountOut, tokenOut.decimals);
 
+    // In-place balance updates
     if (!this._query) {
       tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
       tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
@@ -142,22 +148,21 @@ export default class StablePool extends BasePool {
     const tokenIn = this._tokens[tokenIndexIn];
     const tokenOut = this._tokens[tokenIndexOut];
 
-    const scaledAmountOut = scale(amountOut, tokenOut.decimals);
-
     const scaledAmountIn = math._calcInGivenOut(
       bn(this._amplificationParameter),
-      this._tokens.map((t) => scale(t.balance, t.decimals)),
+      this._tokens.map((t) => this._upScale(t.balance, t.decimals)),
       tokenIndexIn,
       tokenIndexOut,
-      scaledAmountOut
+      this._upScale(amountOut, tokenOut.decimals)
     );
 
-    const scaledAmountInWithFee = this._addSwapFeePercentage(
+    const scaledAmountInPlusFee = this._addSwapFeePercentage(
       scaledAmountIn,
-      scale(this._swapFeePercentage, 18)
+      this._upScale(this._swapFeePercentage, 18)
     );
-    const amountIn = scale(scaledAmountInWithFee, -18);
+    const amountIn = this._downScaleUp(scaledAmountInPlusFee, tokenIn.decimals);
 
+    // In-place balance updates
     if (!this._query) {
       tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
       tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
@@ -177,13 +182,14 @@ export default class StablePool extends BasePool {
 
     const scaledBptOut = math._calcBptOutGivenExactTokensIn(
       bn(this._amplificationParameter),
-      this._tokens.map((t) => scale(t.balance, t.decimals)),
-      this._tokens.map((t) => scale(amountsIn[t.symbol], t.decimals)),
-      scale(this._bptTotalSupply, 18),
-      scale(this._swapFeePercentage, 18)
+      this._tokens.map((t) => this._upScale(t.balance, t.decimals)),
+      this._tokens.map((t) => this._upScale(amountsIn[t.symbol], t.decimals)),
+      this._upScale(this._bptTotalSupply, 18),
+      this._upScale(this._swapFeePercentage, 18)
     );
-    const bptOut = scale(scaledBptOut, -18);
+    const bptOut = this._downScaleDown(scaledBptOut, 18);
 
+    // In-place balance updates
     if (!this._query) {
       for (let i = 0; i < this._tokens.length; i++) {
         const token = this._tokens[i];
@@ -191,7 +197,6 @@ export default class StablePool extends BasePool {
           .plus(amountsIn[token.symbol])
           .toString();
       }
-
       this._bptTotalSupply = bn(this._bptTotalSupply).plus(bptOut).toString();
     }
 
@@ -213,17 +218,17 @@ export default class StablePool extends BasePool {
 
     const scaledAmountIn = math._calcTokenInGivenExactBptOut(
       bn(this._amplificationParameter),
-      this._tokens.map((t) => scale(t.balance, t.decimals)),
+      this._tokens.map((t) => this._upScale(t.balance, t.decimals)),
       tokenIndex,
-      scale(bptOut, 18),
-      scale(this._bptTotalSupply, 18),
-      scale(this._swapFeePercentage, 18)
+      this._upScale(bptOut, 18),
+      this._upScale(this._bptTotalSupply, 18),
+      this._upScale(this._swapFeePercentage, 18)
     );
-    const amountIn = scale(scaledAmountIn, -18);
+    const amountIn = this._downScaleUp(scaledAmountIn, tokenIn.decimals);
 
+    // In-place balance updates
     if (!this._query) {
       tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
-
       this._bptTotalSupply = bn(this._bptTotalSupply).plus(bptOut).toString();
     }
 
@@ -245,17 +250,17 @@ export default class StablePool extends BasePool {
 
     const scaledAmountOut = math._calcTokenOutGivenExactBptIn(
       bn(this._amplificationParameter),
-      this._tokens.map((t) => scale(t.balance, t.decimals)),
+      this._tokens.map((t) => this._upScale(t.balance, t.decimals)),
       tokenIndex,
-      scale(bptIn, 18),
-      scale(this._bptTotalSupply, 18),
-      scale(this._swapFeePercentage, 18)
+      this._upScale(bptIn, 18),
+      this._upScale(this._bptTotalSupply, 18),
+      this._upScale(this._swapFeePercentage, 18)
     );
-    const amountOut = scale(scaledAmountOut, -18);
+    const amountOut = this._downScaleDown(scaledAmountOut, tokenOut.decimals);
 
+    // In-place balance updates
     if (!this._query) {
       tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
-
       this._bptTotalSupply = bn(this._bptTotalSupply).minus(bptIn).toString();
     }
 
@@ -269,18 +274,20 @@ export default class StablePool extends BasePool {
     }
 
     const scaledAmountsOut = math._calcTokensOutGivenExactBptIn(
-      this._tokens.map((t) => scale(t.balance, t.decimals)),
-      scale(bptIn, 18),
-      scale(this._bptTotalSupply, 18)
+      this._tokens.map((t) => this._upScale(t.balance, t.decimals)),
+      this._upScale(bptIn, 18),
+      this._upScale(this._bptTotalSupply, 18)
     );
-    const amountsOut = scaledAmountsOut.map((a) => scale(a, -18));
+    const amountsOut = scaledAmountsOut.map((amount, i) =>
+      this._downScaleDown(amount, this._tokens[i].decimals)
+    );
 
+    // In-place balance updates
     if (!this._query) {
       for (let i = 0; i < this._tokens.length; i++) {
         const token = this._tokens[i];
         token.balance = bn(token.balance).minus(amountsOut[i]).toString();
       }
-
       this._bptTotalSupply = bn(this._bptTotalSupply).minus(bptIn).toString();
     }
 
@@ -296,13 +303,14 @@ export default class StablePool extends BasePool {
 
     const scaledBptIn = math._calcBptInGivenExactTokensOut(
       bn(this._amplificationParameter),
-      this._tokens.map((t) => scale(t.balance, t.decimals)),
-      this._tokens.map((t) => scale(amountsOut[t.symbol], t.decimals)),
-      scale(this._bptTotalSupply, 18),
-      scale(this._swapFeePercentage, 18)
+      this._tokens.map((t) => this._upScale(t.balance, t.decimals)),
+      this._tokens.map((t) => this._upScale(amountsOut[t.symbol], t.decimals)),
+      this._upScale(this._bptTotalSupply, 18),
+      this._upScale(this._swapFeePercentage, 18)
     );
-    const bptIn = scale(scaledBptIn, -18);
+    const bptIn = this._downScaleDown(scaledBptIn, 18);
 
+    // In-place balance updates
     if (!this._query) {
       for (let i = 0; i < this._tokens.length; i++) {
         const token = this._tokens[i];
@@ -310,7 +318,6 @@ export default class StablePool extends BasePool {
           .minus(amountsOut[token.symbol])
           .toString();
       }
-
       this._bptTotalSupply = bn(this._bptTotalSupply).minus(bptIn).toString();
     }
 

@@ -1,83 +1,91 @@
-import { Contract } from "ethers";
+import { BigNumber, Contract } from "ethers";
 import { ethers } from "hardhat";
 
-import { mapsToOrderedLists } from "@utils/common";
-import * as encode from "@utils/pools/weighted/encoding";
+import * as encode from "@utils/pools/encoding";
+
+export type Token = {
+  address: string;
+  symbol: string;
+  decimals: number;
+};
+
+export enum SwapType {
+  GIVEN_IN,
+  GIVEN_OUT,
+}
 
 export const swapGivenIn = async (
   vault: Contract,
   poolId: string,
-  tokens: { [symbol: string]: string },
+  tokens: Token[],
   tokenInSymbol: string,
   tokenOutSymbol: string,
   amountIn: string
 ): Promise<string> => {
-  const result = await queryBatchSwap(
+  const tokenOut = tokens.find((t) => t.symbol === tokenOutSymbol)!;
+
+  const result = await batchSwap(
     vault,
     poolId,
-    0,
+    SwapType.GIVEN_IN,
     tokens,
     tokenInSymbol,
     tokenOutSymbol,
     amountIn
   );
 
-  return ethers.utils.formatEther(result[1].mul(-1));
+  return ethers.utils.formatUnits(result.amountOut, tokenOut.decimals);
 };
 
 export const swapGivenOut = async (
   vault: Contract,
   poolId: string,
-  tokens: { [symbol: string]: string },
+  tokens: Token[],
   tokenInSymbol: string,
   tokenOutSymbol: string,
-  amountIn: string
+  amountOut: string
 ): Promise<string> => {
-  const result = await queryBatchSwap(
+  const tokenIn = tokens.find((t) => t.symbol === tokenInSymbol)!;
+
+  const result = await batchSwap(
     vault,
     poolId,
-    1,
+    SwapType.GIVEN_OUT,
     tokens,
     tokenInSymbol,
     tokenOutSymbol,
-    amountIn
+    amountOut
   );
 
-  return ethers.utils.formatEther(result[0]);
+  return ethers.utils.formatUnits(result.amountIn, tokenIn.decimals);
 };
 
 export const joinExactTokensInForBptOut = async (
   helpers: Contract,
   poolId: string,
-  tokens: { [symbol: string]: string },
-  amountsIn: { [symbol: string]: string }
+  tokens: Token[],
+  amountsIn: string[]
 ): Promise<string> => {
-  const [tokenAddresses, tokenAmountsIn] = mapsToOrderedLists(
-    tokens,
-    amountsIn
-  );
-
   const userData = encode.joinUserData({
     kind: "ExactTokensInForBptOut",
-    amountsIn: tokenAmountsIn.map((a) => ethers.utils.parseEther(a).toString()),
+    amountsIn: amountsIn.map((amount, i) =>
+      ethers.utils.parseUnits(amount, tokens[i].decimals).toString()
+    ),
     minimumBpt: "0",
   });
 
-  const result = await queryJoin(helpers, poolId, tokenAddresses, userData);
+  const result = await join(helpers, poolId, tokens, userData);
   return ethers.utils.formatEther(result.bptOut);
 };
 
 export const joinTokenInForExactBptOut = async (
   helpers: Contract,
   poolId: string,
-  tokens: { [symbol: string]: string },
+  tokens: Token[],
   tokenInSymbol: string,
   bptOut: string
 ): Promise<string> => {
-  const [tokenAddresses] = mapsToOrderedLists(tokens);
-  const tokenInIndex = tokenAddresses.findIndex(
-    (a) => a === tokens[tokenInSymbol]
-  );
+  const tokenInIndex = tokens.findIndex((t) => t.symbol === tokenInSymbol);
 
   const userData = encode.joinUserData({
     kind: "TokenInForExactBptOut",
@@ -85,21 +93,21 @@ export const joinTokenInForExactBptOut = async (
     tokenInIndex,
   });
 
-  const result = await queryJoin(helpers, poolId, tokenAddresses, userData);
-  return ethers.utils.formatEther(result.amountsIn[tokenInIndex]);
+  const result = await join(helpers, poolId, tokens, userData);
+  return ethers.utils.formatUnits(
+    result.amountsIn[tokenInIndex],
+    tokens[tokenInIndex].decimals
+  );
 };
 
 export const exitExactBptInForTokenOut = async (
   helpers: Contract,
   poolId: string,
-  tokens: { [symbol: string]: string },
+  tokens: Token[],
   tokenOutSymbol: string,
   bptIn: string
 ): Promise<string> => {
-  const [tokenAddresses] = mapsToOrderedLists(tokens);
-  const tokenOutIndex = tokenAddresses.findIndex(
-    (a) => a === tokens[tokenOutSymbol]
-  );
+  const tokenOutIndex = tokens.findIndex((t) => t.symbol === tokenOutSymbol);
 
   const userData = encode.exitUserData({
     kind: "ExactBptInForTokenOut",
@@ -107,74 +115,77 @@ export const exitExactBptInForTokenOut = async (
     tokenOutIndex,
   });
 
-  const result = await queryExit(helpers, poolId, tokenAddresses, userData);
-  return ethers.utils.formatEther(result.amountsOut[tokenOutIndex]);
+  const result = await exit(helpers, poolId, tokens, userData);
+  return ethers.utils.formatUnits(
+    result.amountsOut[tokenOutIndex],
+    tokens[tokenOutIndex].decimals
+  );
 };
 
 export const exitExactBptInForTokensOut = async (
   helpers: Contract,
   poolId: string,
-  tokens: { [symbol: string]: string },
+  tokens: Token[],
   bptIn: string
 ): Promise<string[]> => {
-  const [tokenAddresses] = mapsToOrderedLists(tokens);
-
   const userData = encode.exitUserData({
     kind: "ExactBptInForTokensOut",
     bptIn: ethers.utils.parseEther(bptIn).toString(),
   });
 
-  const result = await queryExit(helpers, poolId, tokenAddresses, userData);
-  return result.amountsOut.map(ethers.utils.formatEther);
+  const result = await exit(helpers, poolId, tokens, userData);
+  return result.amountsOut.map((amount: BigNumber, i: number) =>
+    ethers.utils.formatUnits(amount, tokens[i].decimals)
+  );
 };
 
 export const exitBptInForExactTokensOut = async (
   helpers: Contract,
   poolId: string,
-  tokens: { [symbol: string]: string },
-  amountsOut: { [symbol: string]: string }
+  tokens: Token[],
+  amountsOut: string[]
 ): Promise<string> => {
-  const [tokenAddresses, tokenAmountsOut] = mapsToOrderedLists(
-    tokens,
-    amountsOut
-  );
-
   const userData = encode.exitUserData({
     kind: "BptInForExactTokensOut",
-    amountsOut: tokenAmountsOut.map((a) =>
-      ethers.utils.parseEther(a).toString()
+    amountsOut: amountsOut.map((amount, i) =>
+      ethers.utils.parseUnits(amount, tokens[i].decimals).toString()
     ),
     // Choose a value that cannot get exceeded
     maximumBpt: ethers.utils.parseEther("1000000000000000000").toString(),
   });
 
-  const result = await queryExit(helpers, poolId, tokenAddresses, userData);
+  const result = await exit(helpers, poolId, tokens, userData);
   return ethers.utils.formatEther(result.bptIn).toString();
 };
 
-const queryBatchSwap = async (
+const batchSwap = async (
   vault: Contract,
   poolId: string,
-  // 0 - GIVEN_IN, 1 - GIVEN_OUT
-  swapType: number,
-  tokens: { [symbol: string]: string },
+  swapType: SwapType,
+  tokens: Token[],
   tokenInSymbol: string,
   tokenOutSymbol: string,
-  amountIn: string
+  amount: string
 ) => {
+  const tokenIn = tokens.find((t) => t.symbol === tokenInSymbol)!;
+  const tokenOut = tokens.find((t) => t.symbol === tokenOutSymbol)!;
+
   // Returns: [tokenInDelta, tokenOutDelta]
-  return vault.queryBatchSwap(
+  const [tokenInDelta, tokenOutDelta] = await vault.queryBatchSwap(
     swapType,
     [
       {
         poolId,
         assetInIndex: 0,
         assetOutIndex: 1,
-        amount: ethers.utils.parseEther(amountIn),
+        amount:
+          swapType === SwapType.GIVEN_IN
+            ? ethers.utils.parseUnits(amount, tokenIn.decimals)
+            : ethers.utils.parseUnits(amount, tokenOut.decimals),
         userData: "0x",
       },
     ],
-    [tokens[tokenInSymbol], tokens[tokenOutSymbol]],
+    [tokenIn.address, tokenOut.address],
     {
       sender: ethers.constants.AddressZero,
       fromInternalBalance: false,
@@ -182,16 +193,21 @@ const queryBatchSwap = async (
       toInternalBalance: false,
     }
   );
+
+  return {
+    amountIn: tokenInDelta,
+    amountOut: tokenOutDelta.mul(-1),
+  };
 };
 
-const queryJoin = async (
+const join = async (
   helpers: Contract,
   poolId: string,
-  tokenAddresses: string[],
+  tokens: Token[],
   userData: string
 ) => {
   // These values are not actually used by the helper contract
-  const maxAmountsIn = tokenAddresses.map(() => "0");
+  const maxAmountsIn = tokens.map(() => "0");
 
   // Returns: { bptOut, amountsIn }
   return helpers.queryJoin(
@@ -199,7 +215,7 @@ const queryJoin = async (
     ethers.constants.AddressZero,
     ethers.constants.AddressZero,
     {
-      assets: tokenAddresses,
+      assets: tokens.map((t) => t.address),
       maxAmountsIn,
       fromInternalBalance: false,
       userData,
@@ -207,14 +223,14 @@ const queryJoin = async (
   );
 };
 
-const queryExit = async (
+const exit = async (
   helpers: Contract,
   poolId: string,
-  tokenAddresses: string[],
+  tokens: Token[],
   userData: string
 ) => {
   // These values are not actually used by the helper contract
-  const minAmountsOut = tokenAddresses.map(() => "0");
+  const minAmountsOut = tokens.map(() => "0");
 
   // Returns { bptIn, amountsOut }
   return helpers.queryExit(
@@ -222,7 +238,7 @@ const queryExit = async (
     ethers.constants.AddressZero,
     ethers.constants.AddressZero,
     {
-      assets: tokenAddresses,
+      assets: tokens.map((t) => t.address),
       minAmountsOut,
       toInternalBalance: false,
       userData,
