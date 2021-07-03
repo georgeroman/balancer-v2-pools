@@ -71,14 +71,20 @@ describe("WeightedPool", () => {
       tokenIn = sdkPool.tokens[0];
       tokenOut = sdkPool.tokens[1];
       // 0.1% of the balance
-      amountIn = bn(tokenIn.balance).div(1000).toString();
+      amountIn = bn(tokenIn.balance)
+        .div(1000)
+        .decimalPlaces(tokenIn.decimals)
+        .toString();
     });
 
     it("extreme values", () => {
       tokenIn = sdkPool.tokens[1];
       tokenOut = sdkPool.tokens[0];
       // 50% of the balance
-      amountIn = bn(tokenIn.balance).div(2).toString();
+      amountIn = bn(tokenIn.balance)
+        .div(2)
+        .decimalPlaces(tokenIn.decimals)
+        .toString();
     });
   });
 
@@ -109,14 +115,20 @@ describe("WeightedPool", () => {
       tokenIn = sdkPool.tokens[0];
       tokenOut = sdkPool.tokens[1];
       // 0.1% of the balance
-      amountOut = bn(tokenOut.balance).div(1000).toString();
+      amountOut = bn(tokenOut.balance)
+        .div(1000)
+        .decimalPlaces(tokenOut.decimals)
+        .toString();
     });
 
     it("extreme values", () => {
       tokenIn = sdkPool.tokens[1];
       tokenOut = sdkPool.tokens[0];
       // 50% of the balance
-      amountOut = bn(tokenOut.balance).div(2).toString();
+      amountOut = bn(tokenOut.balance)
+        .div(2)
+        .decimalPlaces(tokenOut.decimals)
+        .toString();
     });
   });
 

@@ -14,8 +14,8 @@ describe("StablePool", () => {
 
   before(async () => {
     sdkPool = await StablePool.initFromRealPool(
-      // DAI/USDC/USDT on Kovan
-      "0x1f648ce47c5886001f593af94927e710c51e39a70000000000000000000000c7",
+      // USDC/DAI on Kovan
+      "0xb4c23af48e79f73e3a7e36c0e54eb38e1ce1755e0002000000000000000000d3",
       true,
       Number(process.env.BLOCK_NUMBER),
       true
@@ -33,7 +33,6 @@ describe("StablePool", () => {
 
     const iface = new ethers.utils.Interface([
       "function getSwapFeePercentage() view returns (uint256)",
-      "function getAmplificationParameter() view returns (uint256,bool,uint256)",
     ]);
     const rawSwapFeePercentage = await ethers.provider.call({
       to: sdkPool.address,
@@ -73,14 +72,20 @@ describe("StablePool", () => {
       tokenIn = sdkPool.tokens[0];
       tokenOut = sdkPool.tokens[1];
       // 0.1% of the balance
-      amountIn = bn(tokenIn.balance).div(1000).toString();
+      amountIn = bn(tokenIn.balance)
+        .div(1000)
+        .decimalPlaces(tokenIn.decimals)
+        .toString();
     });
 
     it("extreme values", () => {
-      tokenIn = sdkPool.tokens[1];
-      tokenOut = sdkPool.tokens[0];
+      tokenIn = sdkPool.tokens[0];
+      tokenOut = sdkPool.tokens[1];
       // 50% of the balance
-      amountIn = bn(tokenIn.balance).div(2).toString();
+      amountIn = bn(tokenIn.balance)
+        .div(2)
+        .decimalPlaces(tokenIn.decimals)
+        .toString();
     });
   });
 
@@ -111,14 +116,20 @@ describe("StablePool", () => {
       tokenIn = sdkPool.tokens[0];
       tokenOut = sdkPool.tokens[1];
       // 0.1% of the balance
-      amountOut = bn(tokenOut.balance).div(1000).toString();
+      amountOut = bn(tokenOut.balance)
+        .div(1000)
+        .decimalPlaces(tokenOut.decimals)
+        .toString();
     });
 
     it("extreme values", () => {
-      tokenIn = sdkPool.tokens[1];
-      tokenOut = sdkPool.tokens[0];
+      tokenIn = sdkPool.tokens[0];
+      tokenOut = sdkPool.tokens[1];
       // 50% of the balance
-      amountOut = bn(tokenOut.balance).div(2).toString();
+      amountOut = bn(tokenOut.balance)
+        .div(2)
+        .decimalPlaces(tokenOut.decimals)
+        .toString();
     });
   });
 

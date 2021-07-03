@@ -30,5 +30,5 @@ Note that for now, the stable pool tests use Kovan instances, while the weighted
 To execute selected tests only, run:
 
 ```bash
-npm test -- ./test/weighted/pool.ts
+npm test -- ./test/weighted/math.ts ./test/weighted/pool.ts
 ```

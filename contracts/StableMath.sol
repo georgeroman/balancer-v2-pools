@@ -1097,18 +1097,22 @@ contract StableMath {
         // Amount out, so we round down overall.
 
         // Given that we need to have a greater final balance out, the invariant needs to be rounded up
-        uint256 invariant =
-            _calculateInvariant(amplificationParameter, balances, true);
+        uint256 invariant = _calculateInvariant(
+            amplificationParameter,
+            balances,
+            true
+        );
 
         balances[tokenIndexIn] = balances[tokenIndexIn].add(tokenAmountIn);
 
-        uint256 finalBalanceOut =
-            _getTokenBalanceGivenInvariantAndAllOtherBalances(
-                amplificationParameter,
-                balances,
-                invariant,
-                tokenIndexOut
-            );
+
+            uint256 finalBalanceOut
+         = _getTokenBalanceGivenInvariantAndAllOtherBalances(
+            amplificationParameter,
+            balances,
+            invariant,
+            tokenIndexOut
+        );
 
         balances[tokenIndexIn] = balances[tokenIndexIn].sub(tokenAmountIn);
 
@@ -1140,18 +1144,22 @@ contract StableMath {
         // Amount in, so we round up overall.
 
         // Given that we need to have a greater final balance in, the invariant needs to be rounded up
-        uint256 invariant =
-            _calculateInvariant(amplificationParameter, balances, true);
+        uint256 invariant = _calculateInvariant(
+            amplificationParameter,
+            balances,
+            true
+        );
 
         balances[tokenIndexOut] = balances[tokenIndexOut].sub(tokenAmountOut);
 
-        uint256 finalBalanceIn =
-            _getTokenBalanceGivenInvariantAndAllOtherBalances(
-                amplificationParameter,
-                balances,
-                invariant,
-                tokenIndexIn
-            );
+
+            uint256 finalBalanceIn
+         = _getTokenBalanceGivenInvariantAndAllOtherBalances(
+            amplificationParameter,
+            balances,
+            invariant,
+            tokenIndexIn
+        );
 
         balances[tokenIndexOut] = balances[tokenIndexOut].add(tokenAmountOut);
 
@@ -1195,10 +1203,9 @@ contract StableMath {
 
             // Check if the balance ratio is greater than the ideal ratio to charge fees or not
             if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
-                uint256 nonTaxableAmount =
-                    balances[i].mulDown(
-                        invariantRatioWithFees.sub(FixedPoint.ONE)
-                    );
+                uint256 nonTaxableAmount = balances[i].mulDown(
+                    invariantRatioWithFees.sub(FixedPoint.ONE)
+                );
                 uint256 taxableAmount = amountsIn[i].sub(nonTaxableAmount);
                 amountInWithoutFee = nonTaxableAmount.add(
                     taxableAmount.mulDown(FixedPoint.ONE.sub(swapFeePercentage))
@@ -1237,21 +1244,23 @@ contract StableMath {
         uint256 currentInvariant = _calculateInvariant(amp, balances, true);
 
         // Calculate new invariant
-        uint256 newInvariant =
-            bptTotalSupply.add(bptAmountOut).divUp(bptTotalSupply).mulUp(
-                currentInvariant
-            );
+        uint256 newInvariant = bptTotalSupply
+        .add(bptAmountOut)
+        .divUp(bptTotalSupply)
+        .mulUp(currentInvariant);
 
         // Calculate amount in without fee.
-        uint256 newBalanceTokenIndex =
-            _getTokenBalanceGivenInvariantAndAllOtherBalances(
-                amp,
-                balances,
-                newInvariant,
-                tokenIndex
-            );
-        uint256 amountInWithoutFee =
-            newBalanceTokenIndex.sub(balances[tokenIndex]);
+
+            uint256 newBalanceTokenIndex
+         = _getTokenBalanceGivenInvariantAndAllOtherBalances(
+            amp,
+            balances,
+            newInvariant,
+            tokenIndex
+        );
+        uint256 amountInWithoutFee = newBalanceTokenIndex.sub(
+            balances[tokenIndex]
+        );
 
         // First calculate the sum of all token balances, which will be used to calculate
         // the current weight of each token
@@ -1295,8 +1304,9 @@ contract StableMath {
         }
 
         // Calculate the weighted balance ratio without considering fees
-        uint256[] memory balanceRatiosWithoutFee =
-            new uint256[](amountsOut.length);
+        uint256[] memory balanceRatiosWithoutFee = new uint256[](
+            amountsOut.length
+        );
         uint256 invariantRatioWithoutFees = 0;
         for (uint256 i = 0; i < balances.length; i++) {
             uint256 currentWeight = balances[i].divUp(sumBalances);
@@ -1316,8 +1326,9 @@ contract StableMath {
 
             uint256 amountOutWithFee;
             if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
-                uint256 nonTaxableAmount =
-                    balances[i].mulDown(invariantRatioWithoutFees.complement());
+                uint256 nonTaxableAmount = balances[i].mulDown(
+                    invariantRatioWithoutFees.complement()
+                );
                 uint256 taxableAmount = amountsOut[i].sub(nonTaxableAmount);
                 amountOutWithFee = nonTaxableAmount.add(
                     taxableAmount.divUp(FixedPoint.ONE.sub(swapFeePercentage))
@@ -1350,21 +1361,23 @@ contract StableMath {
 
         // Get the current and new invariants. Since we need a bigger new invariant, we round the current one up.
         uint256 currentInvariant = _calculateInvariant(amp, balances, true);
-        uint256 newInvariant =
-            bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply).mulUp(
-                currentInvariant
-            );
+        uint256 newInvariant = bptTotalSupply
+        .sub(bptAmountIn)
+        .divUp(bptTotalSupply)
+        .mulUp(currentInvariant);
 
         // Calculate amount out without fee
-        uint256 newBalanceTokenIndex =
-            _getTokenBalanceGivenInvariantAndAllOtherBalances(
-                amp,
-                balances,
-                newInvariant,
-                tokenIndex
-            );
-        uint256 amountOutWithoutFee =
-            balances[tokenIndex].sub(newBalanceTokenIndex);
+
+            uint256 newBalanceTokenIndex
+         = _getTokenBalanceGivenInvariantAndAllOtherBalances(
+            amp,
+            balances,
+            newInvariant,
+            tokenIndex
+        );
+        uint256 amountOutWithoutFee = balances[tokenIndex].sub(
+            newBalanceTokenIndex
+        );
 
         // First calculate the sum of all token balances, which will be used to calculate
         // the current weight of each token
@@ -1438,13 +1451,14 @@ contract StableMath {
 
         // Protocol swap fee amount, so we round down overall.
 
-        uint256 finalBalanceFeeToken =
-            _getTokenBalanceGivenInvariantAndAllOtherBalances(
-                amplificationParameter,
-                balances,
-                lastInvariant,
-                tokenIndex
-            );
+
+            uint256 finalBalanceFeeToken
+         = _getTokenBalanceGivenInvariantAndAllOtherBalances(
+            amplificationParameter,
+            balances,
+            lastInvariant,
+            tokenIndex
+        );
 
         if (balances[tokenIndex] <= finalBalanceFeeToken) {
             // This shouldn't happen outside of rounding errors, but have this safeguard nonetheless to prevent the Pool
@@ -1453,8 +1467,9 @@ contract StableMath {
         }
 
         // Result is rounded down
-        uint256 accumulatedTokenSwapFees =
-            balances[tokenIndex].sub(finalBalanceFeeToken);
+        uint256 accumulatedTokenSwapFees = balances[tokenIndex].sub(
+            finalBalanceFeeToken
+        );
         return
             accumulatedTokenSwapFees.mulDown(protocolSwapFeePercentage).divDown(
                 FixedPoint.ONE
@@ -1473,8 +1488,10 @@ contract StableMath {
     ) internal pure returns (uint256) {
         // Rounds result up overall
 
-        uint256 ampTimesTotal =
-            Math.mul(amplificationParameter, balances.length);
+        uint256 ampTimesTotal = Math.mul(
+            amplificationParameter,
+            balances.length
+        );
         uint256 sum = balances[0];
         uint256 P_D = Math.mul(balances.length, balances[0]);
         for (uint256 j = 1; j < balances.length; j++) {
@@ -1488,18 +1505,16 @@ contract StableMath {
 
         uint256 inv2 = Math.mul(invariant, invariant);
         // We remove the balance fromm c by multiplying it
-        uint256 c =
+        uint256 c = Math.mul(
             Math.mul(
-                Math.mul(
-                    Math.divUp(inv2, Math.mul(ampTimesTotal, P_D)),
-                    _AMP_PRECISION
-                ),
-                balances[tokenIndex]
-            );
-        uint256 b =
-            sum.add(
-                Math.mul(Math.divDown(invariant, ampTimesTotal), _AMP_PRECISION)
-            );
+                Math.divUp(inv2, Math.mul(ampTimesTotal, P_D)),
+                _AMP_PRECISION
+            ),
+            balances[tokenIndex]
+        );
+        uint256 b = sum.add(
+            Math.mul(Math.divDown(invariant, ampTimesTotal), _AMP_PRECISION)
+        );
 
         // We iterate to find the balance
         uint256 prevTokenBalance = 0;
