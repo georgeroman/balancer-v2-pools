@@ -15,6 +15,22 @@ RPC_URL=
 BLOCK_NUMBER=
 ```
 
+The setup I recommend for deterministic tests is the following:
+
+For Mainnet (eg. weighted pools):
+
+```bash
+RPC_URL=https://eth-mainnet.alchemyapi.io/v2/ALCHEMY_KEY
+BLOCK_NUMBER=12552900
+```
+
+For Kovan (eg. stable pools):
+
+```bash
+RPC_URL=https://eth-kovan.alchemyapi.io/v2/ALCHEMY_KEY
+BLOCK_NUMBER=25880708
+```
+
 To execute the tests locally, simply run:
 
 ```bash
