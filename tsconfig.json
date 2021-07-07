@@ -3,15 +3,10 @@
     "lib": ["es2019"],
     "module": "commonjs",
     "target": "es2018",
+    "declaration": true,
     "noImplicitAny": true,
     "skipLibCheck": true,
-    "outDir": "dist",
-    "baseUrl": "src",
-    "paths": {
-      "@pools/*": ["pools/*"],
-      "@subgraph/*": ["subgraph/*"],
-      "@utils/*": ["utils/*"]
-    }
+    "outDir": "dist"
   },
-  "exclude": ["node_modules/**"]
+  "exclude": ["dist/**", "node_modules/**"]
 }

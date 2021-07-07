@@ -1,7 +1,7 @@
 // Ported from Solidity:
 // https://github.com/balancer-labs/balancer-core-v2/blob/70843e6a61ad11208c1cfabf5cfe15be216ca8d3/pkg/solidity-utils/contracts/math/LogExpMath.sol
 
-import BigNumber, { bn } from "@utils/big-number";
+import BigNumber, { bn } from "../big-number";
 
 // All fixed point multiplications and divisions are inlined
 // This means we need to divide by ONE when multiplying two numbers, and multiply by ONE when dividing them

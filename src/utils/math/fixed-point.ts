@@ -1,8 +1,8 @@
 // Ported from Solidity:
 // https://github.com/balancer-labs/balancer-core-v2/blob/70843e6a61ad11208c1cfabf5cfe15be216ca8d3/pkg/solidity-utils/contracts/math/FixedPoint.sol
 
-import BigNumber, { bn } from "@utils/big-number";
-import * as logExp from "@utils/math/log-exp";
+import BigNumber, { bn } from "../big-number";
+import * as logExp from "./log-exp";
 
 export const ZERO = bn(0);
 export const ONE = bn("1000000000000000000"); // 10^18

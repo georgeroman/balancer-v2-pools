@@ -2,10 +2,10 @@ import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
 
-import WeightedPool, { IWeightedPoolToken } from "@pools/weighted";
-import * as query from "@utils/pools/query";
-import { bn } from "@utils/big-number";
-import { isSameResult } from "@utils/test";
+import WeightedPool, { IWeightedPoolToken } from "../../src/pools/weighted";
+import { bn } from "../../src/utils/big-number";
+import * as query from "../../src/utils/pools/query";
+import { isSameResult } from "../utils";
 
 describe("WeightedPool", () => {
   let sdkPool: WeightedPool;

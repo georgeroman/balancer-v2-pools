@@ -1,8 +1,8 @@
-import BasePool, { IBasePoolParams, IBasePoolToken } from "@pools/base";
-import * as math from "@pools/weighted/math";
-import { getPool } from "@subgraph/index";
-import { bn, scale } from "@utils/big-number";
-import { shallowCopyAll } from "@utils/common";
+import { getPool } from "../../subgraph/index";
+import { bn } from "../../utils/big-number";
+import { shallowCopyAll } from "../../utils/common";
+import BasePool, { IBasePoolParams, IBasePoolToken } from "../base";
+import * as math from "./math";
 
 export interface IWeightedPoolToken extends IBasePoolToken {
   weight: string;

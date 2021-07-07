@@ -2,7 +2,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
 
-import BigNumber from "@utils/big-number";
+import BigNumber from "../src/utils/big-number";
 
 type ContractDeploymentParams = {
   name: string;
@@ -23,3 +23,22 @@ export const deployContract = async <T extends Contract>(
 
 export const toEvmBn = (value: BigNumber) =>
   ethers.BigNumber.from(value.toString());
+
+export const isSameResult = async (x: Promise<any>, y: Promise<any>) => {
+  let xErrored = false;
+  let yErrored = false;
+
+  const xResult = await x.catch(() => (xErrored = true));
+  const yResult = await y.catch(() => (yErrored = true));
+
+  if (xErrored) {
+    return yErrored;
+  } else if (yErrored) {
+    return xErrored;
+  } else {
+    // Uncomment to check the actual results:
+    // console.log(xResult.toString(), yResult.toString());
+
+    return xResult.toString() === yResult.toString();
+  }
+};

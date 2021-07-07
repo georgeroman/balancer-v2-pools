@@ -1,6 +1,6 @@
 {
   "name": "@georgeroman/balancer-v2-pools",
-  "version": "0.0.1",
+  "version": "0.0.4",
   "scripts": {
     "prepublishOnly": "tsc",
     "test": "hardhat test"
@@ -29,13 +29,14 @@
     "ethereum-waffle": "^3.3.0",
     "hardhat": "^2.3.0",
     "ts-node": "^10.0.0",
-    "tsconfig-paths": "^3.9.0",
     "typescript": "^4.2.4"
   },
   "publishConfig": {
     "access": "public"
   },
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
   "files": [
-    "src/**/*"
+    "dist/**/*"
   ]
 }

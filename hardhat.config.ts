@@ -3,9 +3,6 @@ dotEnvConfig();
 
 import "@nomiclabs/hardhat-waffle";
 
-// This adds support for TS path mappings
-import "tsconfig-paths/register";
-
 import { HardhatUserConfig } from "hardhat/types";
 
 const config: HardhatUserConfig = {

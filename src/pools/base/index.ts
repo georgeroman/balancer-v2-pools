@@ -1,6 +1,5 @@
-import BigNumber, { bn, scale } from "@utils/big-number";
-import * as fp from "@utils/math/fixed-point";
-import * as math from "@utils/math/math";
+import BigNumber, { bn, scale } from "../../utils/big-number";
+import * as math from "../../utils/math/math";
 
 export interface IBasePoolToken {
   address: string;

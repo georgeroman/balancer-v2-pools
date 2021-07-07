@@ -1,7 +1,7 @@
 // Ported from Solidity:
 // https://github.com/balancer-labs/balancer-v2-monorepo/blob/ce70f7663e0ac94b25ed60cb86faaa8199fd9e13/pkg/solidity-utils/contracts/math/Math.sol
 
-import BigNumber, { bn } from "@utils/big-number";
+import BigNumber, { bn } from "../big-number";
 
 export const ZERO = bn(0);
 export const ONE = bn(1);

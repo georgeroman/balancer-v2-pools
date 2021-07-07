@@ -3,10 +3,9 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import * as sdkStableMath from "@pools/stable/math";
-import { bn, scale, scaleAll } from "@utils/big-number";
-import { deployContract, toEvmBn } from "@utils/evm";
-import { isSameResult } from "@utils/test";
+import * as sdkStableMath from "../../src/pools/stable/math";
+import { bn, scale, scaleAll } from "../../src/utils/big-number";
+import { deployContract, isSameResult, toEvmBn } from "../utils";
 
 describe("StableMath", () => {
   let deployer: SignerWithAddress;
