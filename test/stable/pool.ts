@@ -4,8 +4,8 @@ import { ethers } from "hardhat";
 
 import StablePool, { IStablePoolToken } from "../../src/pools/stable";
 import { bn } from "../../src/utils/big-number";
-import * as query from "../../src/utils/pools/query";
-import { isSameResult } from "../utils";
+import { isSameResult } from "../../src/utils/test";
+import * as query from "../../src/utils/test/pools/query";
 
 describe("StablePool", () => {
   let sdkPool: StablePool;

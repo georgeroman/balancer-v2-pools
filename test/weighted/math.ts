@@ -5,7 +5,7 @@ import { ethers } from "hardhat";
 
 import * as sdkWeightedMath from "../../src/pools/weighted/math";
 import { scale, scaleAll } from "../../src/utils/big-number";
-import { deployContract, isSameResult, toEvmBn } from "../utils";
+import { deployContract, isSameResult, toEvmBn } from "../../src/utils/test";
 
 describe("WeightedMath", () => {
   let deployer: SignerWithAddress;

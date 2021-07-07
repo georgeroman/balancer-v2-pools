@@ -5,7 +5,7 @@ import { ethers } from "hardhat";
 
 import * as sdkStableMath from "../../src/pools/stable/math";
 import { bn, scale, scaleAll } from "../../src/utils/big-number";
-import { deployContract, isSameResult, toEvmBn } from "../utils";
+import { deployContract, isSameResult, toEvmBn } from "../../src/utils/test";
 
 describe("StableMath", () => {
   let deployer: SignerWithAddress;
