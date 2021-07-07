@@ -6,9 +6,13 @@
 
 Simple SDK for simulating the exact on-chain behaviour of various Balancer v2 pools.
 
+[![NPM](https://nodei.co/npm/@georgeroman/balancer-v2-pools.png?mini=true)](https://www.npmjs.com/package/@georgeroman/balancer-v2-pools)
+
 ### Usage instructions
 
 ```typescript
+import { WeightedPool } from "@georgeroman/balancer-v2-pools";
+
 const pool = await WeightedPool.initFromRealPool(
   // WETH/DAI 60/40 on Mainnet
   "0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a"
