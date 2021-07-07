@@ -119,17 +119,13 @@ export default class WeightedPool extends BasePool {
     const tokenIn = this._tokens.find((t) => t.symbol === tokenInSymbol);
     const tokenOut = this._tokens.find((t) => t.symbol === tokenOutSymbol);
 
-    const scaledAmountInMinusFee = this._subtractSwapFeePercentage(
-      this._upScale(amountIn, tokenIn.decimals),
-      this._upScale(this._swapFeePercentage, 18)
-    );
-
     const scaledAmountOut = math._calcOutGivenIn(
       this._upScale(tokenIn.balance, tokenIn.decimals),
       this._upScale(tokenIn.weight, 18),
       this._upScale(tokenOut.balance, tokenOut.decimals),
       this._upScale(tokenOut.weight, 18),
-      scaledAmountInMinusFee
+      this._upScale(amountIn, tokenIn.decimals),
+      this._upScale(this._swapFeePercentage, 18)
     );
     const amountOut = this._downScaleDown(scaledAmountOut, tokenOut.decimals);
 
@@ -155,14 +151,10 @@ export default class WeightedPool extends BasePool {
       this._upScale(tokenIn.weight, 18),
       this._upScale(tokenOut.balance, tokenOut.decimals),
       this._upScale(tokenOut.weight, 18),
-      this._upScale(amountOut, tokenOut.decimals)
-    );
-
-    const scaledAmountInPlusFee = this._addSwapFeePercentage(
-      scaledAmountIn,
+      this._upScale(amountOut, tokenOut.decimals),
       this._upScale(this._swapFeePercentage, 18)
     );
-    const amountIn = this._downScaleUp(scaledAmountInPlusFee, tokenIn.decimals);
+    const amountIn = this._downScaleUp(scaledAmountIn, tokenIn.decimals);
 
     // In-place balance updates
     if (!this._query) {

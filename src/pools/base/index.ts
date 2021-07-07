@@ -82,22 +82,6 @@ export default abstract class BasePool {
 
   // ---------------------- Internal ----------------------
 
-  protected _addSwapFeePercentage(
-    amount: BigNumber,
-    swapFeePercentage: BigNumber
-  ): BigNumber {
-    // This returns amount + fee amount, so we round up (favoring a higher fee amount)
-    return fp.divUp(amount, fp.complement(swapFeePercentage));
-  }
-
-  protected _subtractSwapFeePercentage(
-    amount: BigNumber,
-    swapFeePercentage: BigNumber
-  ): BigNumber {
-    // This returns amount - fee amount, so we round up (favoring a higher fee amount)
-    return fp.sub(amount, fp.mulUp(amount, swapFeePercentage));
-  }
-
   protected _upScale(amount: BigNumber | string, decimals: number): BigNumber {
     return math.mul(scale(amount, decimals), bn(10).pow(18 - decimals));
   }

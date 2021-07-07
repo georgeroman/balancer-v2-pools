@@ -90,7 +90,8 @@ export const _calcOutGivenIn = (
   balances: BigNumber[],
   tokenIndexIn: number,
   tokenIndexOut: number,
-  tokenAmountIn: BigNumber
+  tokenAmountIn: BigNumber,
+  swapFeePercentage?: BigNumber
 ): BigNumber => {
   /**************************************************************************************************************
   // outGivenIn token x for y - polynomial equation to solve                                                   //
@@ -103,6 +104,14 @@ export const _calcOutGivenIn = (
   // S = sum of final balances but y                                                                           //
   // P = product of final balances but y                                                                       //
   **************************************************************************************************************/
+
+  // Subtract the fee from the amount in if requested
+  if (swapFeePercentage) {
+    tokenAmountIn = fp.sub(
+      tokenAmountIn,
+      fp.mulUp(tokenAmountIn, swapFeePercentage)
+    );
+  }
 
   // Amount out, so we round down overall.
 
@@ -131,7 +140,8 @@ export const _calcInGivenOut = (
   balances: BigNumber[],
   tokenIndexIn: number,
   tokenIndexOut: number,
-  tokenAmountOut: BigNumber
+  tokenAmountOut: BigNumber,
+  swapFeePercentage?: BigNumber
 ): BigNumber => {
   /**************************************************************************************************************
   // inGivenOut token x for y - polynomial equation to solve                                                   //
@@ -161,7 +171,17 @@ export const _calcInGivenOut = (
 
   balances[tokenIndexOut] = fp.add(balances[tokenIndexOut], tokenAmountOut);
 
-  return fp.add(fp.sub(finalBalanceIn, balances[tokenIndexIn]), math.ONE);
+  let amountIn = fp.add(
+    fp.sub(finalBalanceIn, balances[tokenIndexIn]),
+    math.ONE
+  );
+
+  // Add the fee to the amount in if requested
+  if (swapFeePercentage) {
+    amountIn = fp.divUp(amountIn, fp.complement(swapFeePercentage));
+  }
+
+  return amountIn;
 };
 
 export const _calcBptOutGivenExactTokensIn = (
