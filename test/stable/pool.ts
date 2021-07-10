@@ -14,17 +14,16 @@ describe("StablePool", () => {
 
   before(async () => {
     sdkPool = await StablePool.initFromRealPool(
-      // USDC/DAI on Kovan
-      "0xb4c23af48e79f73e3a7e36c0e54eb38e1ce1755e0002000000000000000000d3",
+      // DAI/USDC/USDT on Mainnet
+      "0x06df3b2bbb68adc8b0e302443692037ed9f91b42000000000000000000000063",
       true,
-      Number(process.env.BLOCK_NUMBER),
-      true
+      Number(process.env.BLOCK_NUMBER)
     );
 
-    const vault = require("@balancer-labs/v2-deployments/deployed/kovan/Vault.json");
+    const vault = require("@balancer-labs/v2-deployments/deployed/mainnet/Vault.json");
     evmVault = await ethers.getContractAt(vault.abi, vault.address);
 
-    const helpers = require("@balancer-labs/v2-deployments/deployed/kovan/BalancerHelpers.json");
+    const helpers = require("@balancer-labs/v2-deployments/deployed/mainnet/BalancerHelpers.json");
     evmHelpers = await ethers.getContractAt(helpers.abi, helpers.address);
 
     // For some reason, the actual on-chain swap fee differs from what is
@@ -191,7 +190,7 @@ describe("StablePool", () => {
 
     it("extreme values", () => {
       tokenIn = sdkPool.tokens[1];
-      bptOut = "1000000000";
+      bptOut = "1000000";
     });
   });
 
