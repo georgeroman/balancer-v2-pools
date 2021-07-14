@@ -1,6 +1,6 @@
 {
   "name": "@georgeroman/balancer-v2-pools",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "scripts": {
     "prepublishOnly": "tsc",
     "test": "hardhat test"
