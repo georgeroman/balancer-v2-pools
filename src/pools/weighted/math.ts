@@ -409,3 +409,103 @@ export const _calcDueTokenProtocolSwapFeeAmount = (
   const tokenAccruedFees = fp.mulDown(balance, fp.complement(power));
   return fp.mulDown(tokenAccruedFees, protocolSwapFeePercentage);
 };
+
+// Convenience method needed by the SOR package (adapted from _calcBptOutGivenExactTokensIn)
+export const _calcBptOutGivenExactTokenIn = (
+  balance: BigNumber,
+  normalizedWeight: BigNumber,
+  amountIn: BigNumber,
+  bptTotalSupply: BigNumber,
+  swapFee: BigNumber
+): BigNumber => {
+  // BPT out, so we round down overall
+
+  const tokenBalanceRatioWithoutFee = fp.divDown(
+    fp.add(balance, amountIn),
+    balance
+  );
+  const weightedBalanceRatio = fp.mulDown(
+    tokenBalanceRatioWithoutFee,
+    normalizedWeight
+  );
+
+  let invariantRatio = fp.ONE;
+
+  // Percentage of the amount supplied that will be swapped for other tokens in the pool
+  let tokenBalancePercentageExcess: BigNumber;
+  // Some tokens might have amounts supplied in excess of a 'balanced' join: these are identified if
+  // the token's balance ratio sans fee is larger than the weighted balance ratio, and swap fees charged
+  // on the amount to swap
+  if (weightedBalanceRatio.gte(tokenBalanceRatioWithoutFee)) {
+    tokenBalancePercentageExcess = fp.ZERO;
+  } else {
+    tokenBalancePercentageExcess = fp.divUp(
+      fp.sub(tokenBalanceRatioWithoutFee, weightedBalanceRatio),
+      fp.sub(tokenBalanceRatioWithoutFee, fp.ONE)
+    );
+  }
+
+  const swapFeeExcess = fp.mulUp(swapFee, tokenBalancePercentageExcess);
+  const amountInAfterFee = fp.mulDown(amountIn, fp.complement(swapFeeExcess));
+
+  const tokenBalanceRatio = fp.add(
+    fp.ONE,
+    fp.divDown(amountInAfterFee, balance)
+  );
+
+  invariantRatio = fp.mulDown(
+    invariantRatio,
+    fp.powDown(tokenBalanceRatio, normalizedWeight)
+  );
+
+  return fp.mulDown(bptTotalSupply, fp.sub(invariantRatio, fp.ONE));
+};
+
+// Convenience method needed by the SOR package (adapted from _calcBptInGivenExactTokensOut)
+export function _calcBptInGivenExactTokenOut(
+  balance: BigNumber,
+  normalizedWeight: BigNumber,
+  amountOut: BigNumber,
+  bptTotalSupply: BigNumber,
+  swapFee: BigNumber
+): BigNumber {
+  // BPT in, so we round up overall
+
+  const tokenBalanceRatioWithoutFee = fp.divUp(
+    fp.sub(balance, amountOut),
+    balance
+  );
+  const weightedBalanceRatio = fp.mulUp(
+    tokenBalanceRatioWithoutFee,
+    normalizedWeight
+  );
+
+  let invariantRatio = fp.ONE;
+
+  // Percentage of the amount supplied that will be swapped for other tokens in the pool
+  let tokenBalancePercentageExcess: BigNumber;
+  // For each ratioSansFee, compare with the total weighted ratio (weightedBalanceRatio) and
+  // decrease the fee from what goes above it
+  if (weightedBalanceRatio.lte(tokenBalanceRatioWithoutFee)) {
+    tokenBalancePercentageExcess = fp.ZERO;
+  } else {
+    tokenBalancePercentageExcess = fp.divUp(
+      fp.sub(weightedBalanceRatio, tokenBalanceRatioWithoutFee),
+      fp.complement(tokenBalanceRatioWithoutFee)
+    );
+  }
+
+  const swapFeeExcess = fp.mulUp(swapFee, tokenBalancePercentageExcess);
+  const amountOutBeforeFee = fp.divUp(amountOut, fp.complement(swapFeeExcess));
+
+  const tokenBalanceRatio = fp.complement(
+    fp.divUp(amountOutBeforeFee, balance)
+  );
+
+  invariantRatio = fp.mulDown(
+    invariantRatio,
+    fp.powDown(tokenBalanceRatio, normalizedWeight)
+  );
+
+  return fp.mulUp(bptTotalSupply, fp.complement(invariantRatio));
+}
