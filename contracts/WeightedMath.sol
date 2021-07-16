@@ -1265,10 +1265,9 @@ contract WeightedMath {
             uint256 amountInWithoutFee;
 
             if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
-                uint256 nonTaxableAmount =
-                    balances[i].mulDown(
-                        invariantRatioWithFees.sub(FixedPoint.ONE)
-                    );
+                uint256 nonTaxableAmount = balances[i].mulDown(
+                    invariantRatioWithFees.sub(FixedPoint.ONE)
+                );
                 uint256 taxableAmount = amountsIn[i].sub(nonTaxableAmount);
                 amountInWithoutFee = nonTaxableAmount.add(
                     taxableAmount.mulDown(FixedPoint.ONE.sub(swapFee))
@@ -1277,8 +1276,9 @@ contract WeightedMath {
                 amountInWithoutFee = amountsIn[i];
             }
 
-            uint256 balanceRatio =
-                balances[i].add(amountInWithoutFee).divDown(balances[i]);
+            uint256 balanceRatio = balances[i].add(amountInWithoutFee).divDown(
+                balances[i]
+            );
 
             invariantRatio = invariantRatio.mulDown(
                 balanceRatio.powDown(normalizedWeights[i])
@@ -1311,19 +1311,22 @@ contract WeightedMath {
         // Token in, so we round up overall.
 
         // Calculate the factor by which the invariant will increase after minting BPTAmountOut
-        uint256 invariantRatio =
-            bptTotalSupply.add(bptAmountOut).divUp(bptTotalSupply);
+        uint256 invariantRatio = bptTotalSupply.add(bptAmountOut).divUp(
+            bptTotalSupply
+        );
         _require(
             invariantRatio <= _MAX_INVARIANT_RATIO,
             Errors.MAX_OUT_BPT_FOR_TOKEN_IN
         );
 
         // Calculate by how much the token balance has to increase to match the invariantRatio
-        uint256 balanceRatio =
-            invariantRatio.powUp(FixedPoint.ONE.divUp(normalizedWeight));
+        uint256 balanceRatio = invariantRatio.powUp(
+            FixedPoint.ONE.divUp(normalizedWeight)
+        );
 
-        uint256 amountInWithoutFee =
-            balance.mulUp(balanceRatio.sub(FixedPoint.ONE));
+        uint256 amountInWithoutFee = balance.mulUp(
+            balanceRatio.sub(FixedPoint.ONE)
+        );
 
         // We can now compute how much extra balance is being deposited and used in virtual swaps, and charge swap fees
         // accordingly.
@@ -1343,8 +1346,9 @@ contract WeightedMath {
     ) public pure returns (uint256) {
         // BPT in, so we round up overall.
 
-        uint256[] memory balanceRatiosWithoutFee =
-            new uint256[](amountsOut.length);
+        uint256[] memory balanceRatiosWithoutFee = new uint256[](
+            amountsOut.length
+        );
         uint256 invariantRatioWithoutFees = 0;
         for (uint256 i = 0; i < balances.length; i++) {
             balanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i]).divUp(
@@ -1362,8 +1366,9 @@ contract WeightedMath {
 
             uint256 amountOutWithFee;
             if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
-                uint256 nonTaxableAmount =
-                    balances[i].mulDown(invariantRatioWithoutFees.complement());
+                uint256 nonTaxableAmount = balances[i].mulDown(
+                    invariantRatioWithoutFees.complement()
+                );
                 uint256 taxableAmount = amountsOut[i].sub(nonTaxableAmount);
 
                 amountOutWithFee = nonTaxableAmount.add(
@@ -1373,8 +1378,9 @@ contract WeightedMath {
                 amountOutWithFee = amountsOut[i];
             }
 
-            uint256 balanceRatio =
-                balances[i].sub(amountOutWithFee).divDown(balances[i]);
+            uint256 balanceRatio = balances[i].sub(amountOutWithFee).divDown(
+                balances[i]
+            );
 
             invariantRatio = invariantRatio.mulDown(
                 balanceRatio.powDown(normalizedWeights[i])
@@ -1404,20 +1410,23 @@ contract WeightedMath {
         // rounds up). Because (totalBPT - bptIn) / totalBPT <= 1, the exponent rounds down.
 
         // Calculate the factor by which the invariant will decrease after burning BPTAmountIn
-        uint256 invariantRatio =
-            bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply);
+        uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).divUp(
+            bptTotalSupply
+        );
         _require(
             invariantRatio >= _MIN_INVARIANT_RATIO,
             Errors.MIN_BPT_IN_FOR_TOKEN_OUT
         );
 
         // Calculate by how much the token balance has to decrease to match invariantRatio
-        uint256 balanceRatio =
-            invariantRatio.powUp(FixedPoint.ONE.divDown(normalizedWeight));
+        uint256 balanceRatio = invariantRatio.powUp(
+            FixedPoint.ONE.divDown(normalizedWeight)
+        );
 
         // Because of rounding up, balanceRatio can be greater than one. Using complement prevents reverts.
-        uint256 amountOutWithoutFee =
-            balance.mulDown(balanceRatio.complement());
+        uint256 amountOutWithoutFee = balance.mulDown(
+            balanceRatio.complement()
+        );
 
         // We can now compute how much excess balance is being withdrawn as a result of the virtual swaps, which result
         // in swap fees.
