@@ -170,7 +170,7 @@ const batchSwap = async (
   const tokenOut = tokens.find((t) => t.symbol === tokenOutSymbol)!;
 
   // Returns: [tokenInDelta, tokenOutDelta]
-  const [tokenInDelta, tokenOutDelta] = await vault.queryBatchSwap(
+  const [tokenInDelta, tokenOutDelta] = await vault.callStatic.queryBatchSwap(
     swapType,
     [
       {
@@ -209,7 +209,7 @@ const join = async (
   const maxAmountsIn = tokens.map(() => "0");
 
   // Returns: { bptOut, amountsIn }
-  return helpers.queryJoin(
+  return helpers.callStatic.queryJoin(
     poolId,
     constants.AddressZero,
     constants.AddressZero,
@@ -232,7 +232,7 @@ const exit = async (
   const minAmountsOut = tokens.map(() => "0");
 
   // Returns { bptIn, amountsOut }
-  return helpers.queryExit(
+  return helpers.callStatic.queryExit(
     poolId,
     constants.AddressZero,
     constants.AddressZero,

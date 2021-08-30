@@ -1,3 +1,4 @@
+import { getBalancerContract } from "@balancer-labs/v2-deployments";
 import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
@@ -20,11 +21,12 @@ describe("StablePool", () => {
       Number(process.env.BLOCK_NUMBER)
     );
 
-    const vault = require("@balancer-labs/v2-deployments/deployed/mainnet/Vault.json");
-    evmVault = await ethers.getContractAt(vault.abi, vault.address);
-
-    const helpers = require("@balancer-labs/v2-deployments/deployed/mainnet/BalancerHelpers.json");
-    evmHelpers = await ethers.getContractAt(helpers.abi, helpers.address);
+    evmVault = await getBalancerContract("20210418-vault", "Vault", "mainnet");
+    evmHelpers = await getBalancerContract(
+      "20210418-vault",
+      "BalancerHelpers",
+      "mainnet"
+    );
 
     // For some reason, the actual on-chain swap fee differs from what is
     // returned from the subgraph, so to make the tests pass we update the

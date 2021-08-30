@@ -44,7 +44,7 @@ The setup I recommend for deterministic tests is the following:
 
 ```bash
 RPC_URL=https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}
-BLOCK_NUMBER=12797724
+BLOCK_NUMBER=13128465
 ```
 
 To execute the tests locally, simply run:
