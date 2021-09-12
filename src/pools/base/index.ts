@@ -11,7 +11,6 @@ export interface IBasePoolToken {
 export interface IBasePoolParams {
   id: string;
   address: string;
-  tokens: IBasePoolToken[];
   bptTotalSupply: string;
   swapFeePercentage: string;
   query?: boolean;
