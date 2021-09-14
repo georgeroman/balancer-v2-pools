@@ -1,6 +1,6 @@
 {
   "name": "@georgeroman/balancer-v2-pools",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "scripts": {
     "prepublishOnly": "tsc",
     "test": "hardhat test"
@@ -37,6 +37,6 @@
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "files": [
-    "dist/**/*"
+    "dist/src/**/*"
   ]
 }
