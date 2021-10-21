@@ -78,32 +78,16 @@ export default class LinearPool extends BasePool {
 
     let scaledAmountOut: BigNumber;
     if (tokenIn.symbol === this._bptToken.symbol) {
-      if (tokenOut.symbol !== this._mainToken.symbol) {
-        throw new Error("INVALID_TOKEN");
-      }
-
-      scaledAmountOut = math._calcMainOutPerBptIn(
-        this._upScale(amountIn, tokenIn.decimals),
-        this._upScale(this._mainToken.balance, this._mainToken.decimals),
-        this._upScale(this._wrappedToken.balance, this._wrappedToken.decimals),
-        // MAX_TOKEN_BALANCE is always greater than BPT balance
-        this.MAX_TOKEN_BALANCE.minus(this._bptToken.balance),
-        {
-          fee: this._upScale(this._swapFeePercentage, 18),
-          rate: this._upScale("1", 18),
-          lowerTarget: this._upScale(this._lowerTarget, 18),
-          upperTarget: this._upScale(this._upperTarget, 18),
-        }
-      );
-    } else if (tokenIn.symbol === this._mainToken.symbol) {
-      if (tokenOut.symbol === this._wrappedToken.symbol) {
-        scaledAmountOut = math._calcWrappedOutPerMainIn(
+      if (tokenOut.symbol === this._mainToken.symbol) {
+        scaledAmountOut = math._calcMainOutPerBptIn(
           this._upScale(amountIn, tokenIn.decimals),
           this._upScale(this._mainToken.balance, this._mainToken.decimals),
           this._upScale(
             this._wrappedToken.balance,
             this._wrappedToken.decimals
           ),
+          // MAX_TOKEN_BALANCE is always greater than BPT balance
+          this.MAX_TOKEN_BALANCE.minus(this._bptToken.balance),
           {
             fee: this._upScale(this._swapFeePercentage, 18),
             rate: this._upScale("1", 18),
@@ -111,9 +95,39 @@ export default class LinearPool extends BasePool {
             upperTarget: this._upScale(this._upperTarget, 18),
           }
         );
+      } else if (tokenOut.symbol === this._wrappedToken.symbol) {
+        scaledAmountOut = math._calcWrappedOutPerBptIn(
+          this._upScale(amountIn, tokenIn.decimals),
+          this._upScale(this._mainToken.balance, this._mainToken.decimals),
+          this._upScale(
+            this._wrappedToken.balance,
+            this._wrappedToken.decimals
+          ),
+          // MAX_TOKEN_BALANCE is always greater than BPT balance
+          this.MAX_TOKEN_BALANCE.minus(this._bptToken.balance),
+          {
+            fee: this._upScale(this._swapFeePercentage, 18),
+            rate: this._upScale("1", 18),
+            lowerTarget: this._upScale(this._lowerTarget, 18),
+            upperTarget: this._upScale(this._upperTarget, 18),
+          }
+        );
+      } else {
+        throw new Error("INVALID_TOKEN");
       }
-
-      if (tokenOut.symbol === this._bptToken.symbol) {
+    } else if (tokenIn.symbol === this._mainToken.symbol) {
+      if (tokenOut.symbol === this._wrappedToken.symbol) {
+        scaledAmountOut = math._calcWrappedOutPerMainIn(
+          this._upScale(amountIn, tokenIn.decimals),
+          this._upScale(this._mainToken.balance, this._mainToken.decimals),
+          {
+            fee: this._upScale(this._swapFeePercentage, 18),
+            rate: this._upScale("1", 18),
+            lowerTarget: this._upScale(this._lowerTarget, 18),
+            upperTarget: this._upScale(this._upperTarget, 18),
+          }
+        );
+      } else if (tokenOut.symbol === this._bptToken.symbol) {
         scaledAmountOut = math._calcBptOutPerMainIn(
           this._upScale(amountIn, tokenIn.decimals),
           this._upScale(this._mainToken.balance, this._mainToken.decimals),
@@ -130,24 +144,41 @@ export default class LinearPool extends BasePool {
             upperTarget: this._upScale(this._upperTarget, 18),
           }
         );
-      }
-
-      throw new Error("INVALID_TOKEN");
-    } else if (tokenIn.symbol === this._wrappedToken.symbol) {
-      if (tokenOut.symbol !== this._mainToken.symbol) {
+      } else {
         throw new Error("INVALID_TOKEN");
       }
-
-      scaledAmountOut = math._calcMainOutPerWrappedIn(
-        this._upScale(amountIn, tokenIn.decimals),
-        this._upScale(this._mainToken.balance, this._mainToken.decimals),
-        {
-          fee: this._upScale(this._swapFeePercentage, 18),
-          rate: this._upScale("1", 18),
-          lowerTarget: this._upScale(this._lowerTarget, 18),
-          upperTarget: this._upScale(this._upperTarget, 18),
-        }
-      );
+    } else if (tokenIn.symbol === this._wrappedToken.symbol) {
+      if (tokenOut.symbol === this._mainToken.symbol) {
+        scaledAmountOut = math._calcMainOutPerWrappedIn(
+          this._upScale(amountIn, tokenIn.decimals),
+          this._upScale(this._mainToken.balance, this._mainToken.decimals),
+          {
+            fee: this._upScale(this._swapFeePercentage, 18),
+            rate: this._upScale("1", 18),
+            lowerTarget: this._upScale(this._lowerTarget, 18),
+            upperTarget: this._upScale(this._upperTarget, 18),
+          }
+        );
+      } else if (tokenOut.symbol === this._bptToken.symbol) {
+        scaledAmountOut = math._calcBptOutPerWrappedIn(
+          this._upScale(amountIn, tokenIn.decimals),
+          this._upScale(this._mainToken.balance, this._mainToken.decimals),
+          this._upScale(
+            this._wrappedToken.balance,
+            this._wrappedToken.decimals
+          ),
+          // MAX_TOKEN_BALANCE is always greater than BPT balance
+          this.MAX_TOKEN_BALANCE.minus(this._bptToken.balance),
+          {
+            fee: this._upScale(this._swapFeePercentage, 18),
+            rate: this._upScale("1", 18),
+            lowerTarget: this._upScale(this._lowerTarget, 18),
+            upperTarget: this._upScale(this._upperTarget, 18),
+          }
+        );
+      } else {
+        throw new Error("INVALID_TOKEN");
+      }
     } else {
       throw new Error("INVALID_TOKEN");
     }
@@ -180,32 +211,16 @@ export default class LinearPool extends BasePool {
 
     let scaledAmountIn: BigNumber;
     if (tokenOut.symbol === this._bptToken.symbol) {
-      if (tokenIn.symbol !== this._mainToken.symbol) {
-        throw new Error("INVALID_TOKEN");
-      }
-
-      scaledAmountIn = math._calcMainInPerBptOut(
-        this._upScale(amountOut, tokenOut.decimals),
-        this._upScale(this._mainToken.balance, this._mainToken.decimals),
-        this._upScale(this._wrappedToken.balance, this._wrappedToken.decimals),
-        // MAX_TOKEN_BALANCE is always greater than BPT balance
-        this.MAX_TOKEN_BALANCE.minus(this._bptToken.balance),
-        {
-          fee: this._upScale(this._swapFeePercentage, 18),
-          rate: this._upScale("1", 18),
-          lowerTarget: this._upScale(this._lowerTarget, 18),
-          upperTarget: this._upScale(this._upperTarget, 18),
-        }
-      );
-    } else if (tokenOut.symbol === this._mainToken.symbol) {
-      if (tokenIn.symbol === this._wrappedToken.symbol) {
-        scaledAmountIn = math._calcWrappedInPerMainOut(
+      if (tokenIn.symbol === this._mainToken.symbol) {
+        scaledAmountIn = math._calcMainInPerBptOut(
           this._upScale(amountOut, tokenOut.decimals),
           this._upScale(this._mainToken.balance, this._mainToken.decimals),
           this._upScale(
             this._wrappedToken.balance,
             this._wrappedToken.decimals
           ),
+          // MAX_TOKEN_BALANCE is always greater than BPT balance
+          this.MAX_TOKEN_BALANCE.minus(this._bptToken.balance),
           {
             fee: this._upScale(this._swapFeePercentage, 18),
             rate: this._upScale("1", 18),
@@ -213,9 +228,39 @@ export default class LinearPool extends BasePool {
             upperTarget: this._upScale(this._upperTarget, 18),
           }
         );
+      } else if (tokenIn.symbol === this._wrappedToken.symbol) {
+        scaledAmountIn = math._calcWrappedInPerBptOut(
+          this._upScale(amountOut, tokenOut.decimals),
+          this._upScale(this._mainToken.balance, this._mainToken.decimals),
+          this._upScale(
+            this._wrappedToken.balance,
+            this._wrappedToken.decimals
+          ),
+          // MAX_TOKEN_BALANCE is always greater than BPT balance
+          this.MAX_TOKEN_BALANCE.minus(this._bptToken.balance),
+          {
+            fee: this._upScale(this._swapFeePercentage, 18),
+            rate: this._upScale("1", 18),
+            lowerTarget: this._upScale(this._lowerTarget, 18),
+            upperTarget: this._upScale(this._upperTarget, 18),
+          }
+        );
+      } else {
+        throw new Error("INVALID_TOKEN");
       }
-
-      if (tokenIn.symbol === this._bptToken.symbol) {
+    } else if (tokenOut.symbol === this._mainToken.symbol) {
+      if (tokenIn.symbol === this._wrappedToken.symbol) {
+        scaledAmountIn = math._calcWrappedInPerMainOut(
+          this._upScale(amountOut, tokenOut.decimals),
+          this._upScale(this._mainToken.balance, this._mainToken.decimals),
+          {
+            fee: this._upScale(this._swapFeePercentage, 18),
+            rate: this._upScale("1", 18),
+            lowerTarget: this._upScale(this._lowerTarget, 18),
+            upperTarget: this._upScale(this._upperTarget, 18),
+          }
+        );
+      } else if (tokenIn.symbol === this._bptToken.symbol) {
         scaledAmountIn = math._calcBptInPerMainOut(
           this._upScale(amountOut, tokenOut.decimals),
           this._upScale(this._mainToken.balance, this._mainToken.decimals),
@@ -232,24 +277,41 @@ export default class LinearPool extends BasePool {
             upperTarget: this._upScale(this._upperTarget, 18),
           }
         );
-      }
-
-      throw new Error("INVALID_TOKEN");
-    } else if (tokenOut.symbol === this._wrappedToken.symbol) {
-      if (tokenIn.symbol !== this._mainToken.symbol) {
+      } else {
         throw new Error("INVALID_TOKEN");
       }
-
-      scaledAmountIn = math._calcMainInPerWrappedOut(
-        this._upScale(amountOut, tokenOut.decimals),
-        this._upScale(this._mainToken.balance, this._mainToken.decimals),
-        {
-          fee: this._upScale(this._swapFeePercentage, 18),
-          rate: this._upScale("1", 18),
-          lowerTarget: this._upScale(this._lowerTarget, 18),
-          upperTarget: this._upScale(this._upperTarget, 18),
-        }
-      );
+    } else if (tokenOut.symbol === this._wrappedToken.symbol) {
+      if (tokenIn.symbol === this._mainToken.symbol) {
+        scaledAmountIn = math._calcMainInPerWrappedOut(
+          this._upScale(amountOut, tokenOut.decimals),
+          this._upScale(this._mainToken.balance, this._mainToken.decimals),
+          {
+            fee: this._upScale(this._swapFeePercentage, 18),
+            rate: this._upScale("1", 18),
+            lowerTarget: this._upScale(this._lowerTarget, 18),
+            upperTarget: this._upScale(this._upperTarget, 18),
+          }
+        );
+      } else if (tokenIn.symbol === this._bptToken.symbol) {
+        scaledAmountIn = math._calcBptInPerWrappedOut(
+          this._upScale(amountOut, tokenOut.decimals),
+          this._upScale(this._mainToken.balance, this._mainToken.decimals),
+          this._upScale(
+            this._wrappedToken.balance,
+            this._wrappedToken.decimals
+          ),
+          // MAX_TOKEN_BALANCE is always greater than BPT balance
+          this.MAX_TOKEN_BALANCE.minus(this._bptToken.balance),
+          {
+            fee: this._upScale(this._swapFeePercentage, 18),
+            rate: this._upScale("1", 18),
+            lowerTarget: this._upScale(this._lowerTarget, 18),
+            upperTarget: this._upScale(this._upperTarget, 18),
+          }
+        );
+      } else {
+        throw new Error("INVALID_TOKEN");
+      }
     } else {
       throw new Error("INVALID_TOKEN");
     }

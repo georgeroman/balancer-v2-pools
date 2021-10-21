@@ -59,7 +59,6 @@ export const _calcBptInPerMainOut = (
 export const _calcWrappedOutPerMainIn = (
   mainIn: BigNumber,
   mainBalance: BigNumber,
-  wrappedBalance: BigNumber,
   params: Params
 ): BigNumber => {
   // Amount out, so we round down overall.
@@ -67,17 +66,12 @@ export const _calcWrappedOutPerMainIn = (
   const previousNominalMain = _toNominal(mainBalance, params);
   const afterNominalMain = _toNominal(fp.add(mainBalance, mainIn), params);
   const deltaNominalMain = fp.sub(afterNominalMain, previousNominalMain);
-  const newWrappedBalance = fp.sub(
-    wrappedBalance,
-    fp.mulDown(deltaNominalMain, params.rate)
-  );
-  return fp.sub(wrappedBalance, newWrappedBalance);
+  return fp.divDown(deltaNominalMain, params.rate);
 };
 
 export const _calcWrappedInPerMainOut = (
   mainOut: BigNumber,
   mainBalance: BigNumber,
-  wrappedBalance: BigNumber,
   params: Params
 ): BigNumber => {
   // Amount in, so we round up overall.
@@ -85,11 +79,7 @@ export const _calcWrappedInPerMainOut = (
   const previousNominalMain = _toNominal(mainBalance, params);
   const afterNominalMain = _toNominal(fp.sub(mainBalance, mainOut), params);
   const deltaNominalMain = fp.sub(previousNominalMain, afterNominalMain);
-  const newWrappedBalance = fp.add(
-    wrappedBalance,
-    fp.mulUp(deltaNominalMain, params.rate)
-  );
-  return fp.sub(newWrappedBalance, wrappedBalance);
+  return fp.divUp(deltaNominalMain, params.rate);
 };
 
 export const _calcMainInPerBptOut = (
@@ -164,6 +154,134 @@ export const _calcMainInPerWrappedOut = (
   const afterNominalMain = fp.add(previousNominalMain, deltaNominalMain);
   const newMainBalance = _fromNominal(afterNominalMain, params);
   return fp.sub(newMainBalance, mainBalance);
+};
+
+export const _calcBptOutPerWrappedIn = (
+  wrappedIn: BigNumber,
+  mainBalance: BigNumber,
+  wrappedBalance: BigNumber,
+  bptSupply: BigNumber,
+  params: Params
+): BigNumber => {
+  // Amount out, so we round down overall.
+
+  if (bptSupply.isZero()) {
+    // Return nominal DAI
+    return fp.mulDown(wrappedIn, params.rate);
+  }
+
+  const nominalMain = _toNominal(mainBalance, params);
+  const previousInvariant = _calcInvariantUp(
+    nominalMain,
+    wrappedBalance,
+    params
+  );
+
+  const newWrappedBalance = fp.add(wrappedBalance, wrappedIn);
+  const newInvariant = _calcInvariantDown(
+    nominalMain,
+    newWrappedBalance,
+    params
+  );
+
+  const newBptBalance = fp.divDown(
+    fp.mulDown(bptSupply, newInvariant),
+    previousInvariant
+  );
+
+  return fp.sub(newBptBalance, bptSupply);
+};
+
+export const _calcBptInPerWrappedOut = (
+  wrappedOut: BigNumber,
+  mainBalance: BigNumber,
+  wrappedBalance: BigNumber,
+  bptSupply: BigNumber,
+  params: Params
+): BigNumber => {
+  // Amount in, so we round up overall.
+
+  const nominalMain = _toNominal(mainBalance, params);
+  const previousInvariant = _calcInvariantUp(
+    nominalMain,
+    wrappedBalance,
+    params
+  );
+
+  const newWrappedBalance = fp.sub(wrappedBalance, wrappedOut);
+  const newInvariant = _calcInvariantDown(
+    nominalMain,
+    newWrappedBalance,
+    params
+  );
+
+  const newBptBalance = fp.divDown(
+    fp.mulDown(bptSupply, newInvariant),
+    previousInvariant
+  );
+
+  return fp.sub(bptSupply, newBptBalance);
+};
+
+export const _calcWrappedInPerBptOut = (
+  bptOut: BigNumber,
+  mainBalance: BigNumber,
+  wrappedBalance: BigNumber,
+  bptSupply: BigNumber,
+  params: Params
+): BigNumber => {
+  // Amount in, so we round up overall.
+
+  if (bptSupply.isZero()) {
+    // Return nominal DAI
+    return fp.divUp(bptOut, params.rate);
+  }
+
+  const nominalMain = _toNominal(mainBalance, params);
+  const previousInvariant = _calcInvariantUp(
+    nominalMain,
+    wrappedBalance,
+    params
+  );
+
+  const newBptBalance = fp.add(bptSupply, bptOut);
+  const newWrappedBalance = fp.divUp(
+    fp.sub(
+      fp.mulUp(fp.divUp(newBptBalance, bptSupply), previousInvariant),
+      nominalMain
+    ),
+    params.rate
+  );
+
+  return fp.sub(newWrappedBalance, wrappedBalance);
+};
+
+export const _calcWrappedOutPerBptIn = (
+  bptIn: BigNumber,
+  mainBalance: BigNumber,
+  wrappedBalance: BigNumber,
+  bptSupply: BigNumber,
+  params: Params
+): BigNumber => {
+  // Amount out, so we round down overall.
+
+  const nominalMain = _toNominal(mainBalance, params);
+  const previousInvariant = _calcInvariantUp(
+    nominalMain,
+    wrappedBalance,
+    params
+  );
+
+  const newBptBalance = fp.sub(bptSupply, bptIn);
+  const newWrappedBalance = fp.divUp(
+    fp.sub(
+      fp.mulUp(fp.divUp(newBptBalance, bptSupply), previousInvariant),
+      nominalMain
+    ),
+    params.rate
+  );
+
+  return fp.sub(wrappedBalance, newWrappedBalance);
 };
 
 const _calcInvariantUp = (

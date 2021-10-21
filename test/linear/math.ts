@@ -4,7 +4,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import * as sdkLinearMath from "../../src/pools/linear/math";
-import { scale, scaleAll } from "../../src/utils/big-number";
+import { scale } from "../../src/utils/big-number";
 import { deployContract, isSameResult, toEvmBn } from "../../src/utils/test";
 
 type Params = {
@@ -154,14 +154,12 @@ describe("LinearMath", () => {
   describe("_calcWrappedOutPerMainIn", () => {
     let mainIn: string;
     let mainBalance: string;
-    let wrappedBalance: string;
     let params: Params;
 
     afterEach(async () => {
       const evmExecution = evmLinearMath._calcWrappedOutPerMainIn(
         toEvmBn(scale(mainIn, 18)),
         toEvmBn(scale(mainBalance, 18)),
-        toEvmBn(scale(wrappedBalance, 18)),
         {
           fee: toEvmBn(scale(params.fee, 18)),
           rate: toEvmBn(scale(params.fee, 18)),
@@ -175,7 +173,6 @@ describe("LinearMath", () => {
           sdkLinearMath._calcWrappedOutPerMainIn(
             scale(mainIn, 18),
             scale(mainBalance, 18),
-            scale(wrappedBalance, 18),
             {
               fee: scale(params.fee, 18),
               rate: scale(params.fee, 18),
@@ -192,7 +189,6 @@ describe("LinearMath", () => {
     it("simple values", () => {
       mainIn = "50";
       mainBalance = "500";
-      wrappedBalance = "200";
       params = {
         fee: "0.01",
         rate: "1",
@@ -205,14 +201,12 @@ describe("LinearMath", () => {
   describe("_calcWrappedInPerMainOut", () => {
     let mainOut: string;
     let mainBalance: string;
-    let wrappedBalance: string;
     let params: Params;
 
     afterEach(async () => {
       const evmExecution = evmLinearMath._calcWrappedInPerMainOut(
         toEvmBn(scale(mainOut, 18)),
         toEvmBn(scale(mainBalance, 18)),
-        toEvmBn(scale(wrappedBalance, 18)),
         {
           fee: toEvmBn(scale(params.fee, 18)),
           rate: toEvmBn(scale(params.fee, 18)),
@@ -226,7 +220,6 @@ describe("LinearMath", () => {
           sdkLinearMath._calcWrappedInPerMainOut(
             scale(mainOut, 18),
             scale(mainBalance, 18),
-            scale(wrappedBalance, 18),
             {
               fee: scale(params.fee, 18),
               rate: scale(params.fee, 18),
@@ -243,7 +236,6 @@ describe("LinearMath", () => {
     it("simple values", () => {
       mainOut = "100";
       mainBalance = "600";
-      wrappedBalance = "100";
       params = {
         fee: "0.01",
         rate: "1",
@@ -451,6 +443,226 @@ describe("LinearMath", () => {
       params = {
         fee: "0.01",
         rate: "1.5",
+        lowerTarget: "1000",
+        upperTarget: "2000",
+      };
+    });
+  });
+
+  describe("_calcBptOutPerWrappedIn", () => {
+    let wrappedIn: string;
+    let mainBalance: string;
+    let wrappedBalance: string;
+    let bptSupply: string;
+    let params: Params;
+
+    afterEach(async () => {
+      const evmExecution = evmLinearMath._calcBptOutPerWrappedIn(
+        toEvmBn(scale(wrappedIn, 18)),
+        toEvmBn(scale(mainBalance, 18)),
+        toEvmBn(scale(wrappedBalance, 18)),
+        toEvmBn(scale(bptSupply, 18)),
+        {
+          fee: toEvmBn(scale(params.fee, 18)),
+          rate: toEvmBn(scale(params.fee, 18)),
+          lowerTarget: toEvmBn(scale(params.lowerTarget, 18)),
+          upperTarget: toEvmBn(scale(params.upperTarget, 18)),
+        }
+      );
+
+      const sdkExecution = new Promise((resolve) =>
+        resolve(
+          sdkLinearMath._calcBptOutPerWrappedIn(
+            scale(wrappedIn, 18),
+            scale(mainBalance, 18),
+            scale(wrappedBalance, 18),
+            scale(bptSupply, 18),
+            {
+              fee: scale(params.fee, 18),
+              rate: scale(params.fee, 18),
+              lowerTarget: scale(params.lowerTarget, 18),
+              upperTarget: scale(params.upperTarget, 18),
+            }
+          )
+        )
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      wrappedIn = "500";
+      mainBalance = "100";
+      wrappedBalance = "0";
+      bptSupply = "150";
+      params = {
+        fee: "0.01",
+        rate: "1",
+        lowerTarget: "1000",
+        upperTarget: "2000",
+      };
+    });
+  });
+
+  describe("_calcBptInPerWrappedOut", () => {
+    let wrappedOut: string;
+    let mainBalance: string;
+    let wrappedBalance: string;
+    let bptSupply: string;
+    let params: Params;
+
+    afterEach(async () => {
+      const evmExecution = evmLinearMath._calcBptInPerWrappedOut(
+        toEvmBn(scale(wrappedOut, 18)),
+        toEvmBn(scale(mainBalance, 18)),
+        toEvmBn(scale(wrappedBalance, 18)),
+        toEvmBn(scale(bptSupply, 18)),
+        {
+          fee: toEvmBn(scale(params.fee, 18)),
+          rate: toEvmBn(scale(params.fee, 18)),
+          lowerTarget: toEvmBn(scale(params.lowerTarget, 18)),
+          upperTarget: toEvmBn(scale(params.upperTarget, 18)),
+        }
+      );
+
+      const sdkExecution = new Promise((resolve) =>
+        resolve(
+          sdkLinearMath._calcBptInPerWrappedOut(
+            scale(wrappedOut, 18),
+            scale(mainBalance, 18),
+            scale(wrappedBalance, 18),
+            scale(bptSupply, 18),
+            {
+              fee: scale(params.fee, 18),
+              rate: scale(params.fee, 18),
+              lowerTarget: scale(params.lowerTarget, 18),
+              upperTarget: scale(params.upperTarget, 18),
+            }
+          )
+        )
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      wrappedOut = "10";
+      mainBalance = "100";
+      wrappedBalance = "100";
+      bptSupply = "150";
+      params = {
+        fee: "0.01",
+        rate: "1.3",
+        lowerTarget: "1000",
+        upperTarget: "2000",
+      };
+    });
+  });
+
+  describe("_calcWrappedInPerBptOut", () => {
+    let bptOut: string;
+    let mainBalance: string;
+    let wrappedBalance: string;
+    let bptSupply: string;
+    let params: Params;
+
+    afterEach(async () => {
+      const evmExecution = evmLinearMath._calcWrappedInPerBptOut(
+        toEvmBn(scale(bptOut, 18)),
+        toEvmBn(scale(mainBalance, 18)),
+        toEvmBn(scale(wrappedBalance, 18)),
+        toEvmBn(scale(bptSupply, 18)),
+        {
+          fee: toEvmBn(scale(params.fee, 18)),
+          rate: toEvmBn(scale(params.fee, 18)),
+          lowerTarget: toEvmBn(scale(params.lowerTarget, 18)),
+          upperTarget: toEvmBn(scale(params.upperTarget, 18)),
+        }
+      );
+
+      const sdkExecution = new Promise((resolve) =>
+        resolve(
+          sdkLinearMath._calcWrappedInPerBptOut(
+            scale(bptOut, 18),
+            scale(mainBalance, 18),
+            scale(wrappedBalance, 18),
+            scale(bptSupply, 18),
+            {
+              fee: scale(params.fee, 18),
+              rate: scale(params.fee, 18),
+              lowerTarget: scale(params.lowerTarget, 18),
+              upperTarget: scale(params.upperTarget, 18),
+            }
+          )
+        )
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      bptOut = "100";
+      mainBalance = "150";
+      wrappedBalance = "100";
+      bptSupply = "250";
+      params = {
+        fee: "0.01",
+        rate: "1.2",
+        lowerTarget: "1000",
+        upperTarget: "2000",
+      };
+    });
+  });
+
+  describe("_calcWrappedOutPerBptIn", () => {
+    let bptIn: string;
+    let mainBalance: string;
+    let wrappedBalance: string;
+    let bptSupply: string;
+    let params: Params;
+
+    afterEach(async () => {
+      const evmExecution = evmLinearMath._calcWrappedOutPerBptIn(
+        toEvmBn(scale(bptIn, 18)),
+        toEvmBn(scale(mainBalance, 18)),
+        toEvmBn(scale(wrappedBalance, 18)),
+        toEvmBn(scale(bptSupply, 18)),
+        {
+          fee: toEvmBn(scale(params.fee, 18)),
+          rate: toEvmBn(scale(params.fee, 18)),
+          lowerTarget: toEvmBn(scale(params.lowerTarget, 18)),
+          upperTarget: toEvmBn(scale(params.upperTarget, 18)),
+        }
+      );
+
+      const sdkExecution = new Promise((resolve) =>
+        resolve(
+          sdkLinearMath._calcWrappedOutPerBptIn(
+            scale(bptIn, 18),
+            scale(mainBalance, 18),
+            scale(wrappedBalance, 18),
+            scale(bptSupply, 18),
+            {
+              fee: scale(params.fee, 18),
+              rate: scale(params.fee, 18),
+              lowerTarget: scale(params.lowerTarget, 18),
+              upperTarget: scale(params.upperTarget, 18),
+            }
+          )
+        )
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      bptIn = "100";
+      mainBalance = "150";
+      wrappedBalance = "100";
+      bptSupply = "250";
+      params = {
+        fee: "0.01",
+        rate: "1",
         lowerTarget: "1000",
         upperTarget: "2000",
       };
