@@ -1,5 +1,5 @@
 // Ported from Solidity:
-// // https://github.com/balancer-labs/balancer-v2-monorepo/blob/589542001aeca5bdc120404874fe0137f6a4c749/pkg/pool-linear/contracts/LinearMath.sol
+// https://github.com/balancer-labs/balancer-v2-monorepo/blob/88a14eb623f6a22ef3f1afc5a8c49ebfa7eeceed/pkg/pool-linear/contracts/LinearMath.sol
 
 import BigNumber, { bn } from "../../utils/big-number";
 import * as fp from "../../utils/math/fixed-point";
