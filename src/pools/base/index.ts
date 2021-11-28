@@ -1,4 +1,5 @@
 import BigNumber, { bn, scale } from "../../utils/big-number";
+import * as fp from "../../utils/math/fixed-point";
 import * as math from "../../utils/math/math";
 
 export interface IBasePoolToken {
@@ -99,5 +100,29 @@ export default abstract class BasePool {
     decimals: number
   ): BigNumber {
     return scale(math.divUp(bn(amount), bn(10).pow(18 - decimals)), -decimals);
+  }
+
+  protected _subtractSwapFeeAmount(
+    amount: BigNumber | string,
+    decimals: number
+  ): BigNumber {
+    const scaledAmount = scale(amount, decimals);
+    const scaledAmountWithoutFees = fp.sub(
+      scaledAmount,
+      fp.mulUp(scaledAmount, this._upScale(this._swapFeePercentage, 18))
+    );
+    return scale(scaledAmountWithoutFees, -decimals);
+  }
+
+  protected _addSwapFeeAmount(
+    amount: BigNumber | string,
+    decimals: number
+  ): BigNumber {
+    const scaledAmount = scale(amount, decimals);
+    const scaledAmountWithFees = fp.divUp(
+      scaledAmount,
+      fp.sub(fp.ONE, this._upScale(this._swapFeePercentage, 18))
+    );
+    return scale(scaledAmountWithFees, -decimals);
   }
 }

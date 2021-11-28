@@ -46,8 +46,7 @@ export const _calcOutGivenIn = (
   weightIn: BigNumber,
   balanceOut: BigNumber,
   weightOut: BigNumber,
-  amountIn: BigNumber,
-  swapFeePercentage?: BigNumber
+  amountIn: BigNumber
 ): BigNumber => {
   /*****************************************************************************************
   // outGivenIn                                                                           //
@@ -58,11 +57,6 @@ export const _calcOutGivenIn = (
   // wi = weightIn               \      \       ( bi + ai )         /              /      //
   // wo = weightOut                                                                       //
   *****************************************************************************************/
-
-  // Subtract the fee from the amount in if requested
-  if (swapFeePercentage) {
-    amountIn = fp.sub(amountIn, fp.mulUp(amountIn, swapFeePercentage));
-  }
 
   // Amount out, so we round down overall
 
@@ -89,8 +83,7 @@ export const _calcInGivenOut = (
   weightIn: BigNumber,
   balanceOut: BigNumber,
   weightOut: BigNumber,
-  amountOut: BigNumber,
-  swapFeePercentage?: BigNumber
+  amountOut: BigNumber
 ): BigNumber => {
   /*****************************************************************************************
   // inGivenOut                                                                           //
@@ -119,11 +112,6 @@ export const _calcInGivenOut = (
   const ratio = fp.sub(power, fp.ONE);
 
   let amountIn = fp.mulUp(balanceIn, ratio);
-
-  // Add the fee to the amount in if requested
-  if (swapFeePercentage) {
-    amountIn = fp.divUp(amountIn, fp.complement(swapFeePercentage));
-  }
 
   return amountIn;
 };
