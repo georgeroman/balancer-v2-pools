@@ -1,3 +1,9 @@
+import { getBalancerContractAddress } from "@balancer-labs/v2-deployments";
+import { Interface } from "@ethersproject/abi";
+import { Provider } from "@ethersproject/abstract-provider";
+import { Contract } from "@ethersproject/contracts";
+import { formatEther, formatUnits } from "@ethersproject/units";
+
 import { getPool } from "../../subgraph/index";
 import { bn } from "../../utils/big-number";
 import { shallowCopyAll } from "../../utils/common";
@@ -49,15 +55,87 @@ export default class StablePool extends BasePool {
       .toString();
   }
 
+  // ---------------------- On-chain initializer ----------------------
+
+  public static async initFromOnchain(
+    provider: Provider,
+    poolId: string,
+    network = "mainnet",
+    query = false
+  ) {
+    const vaultInterface = new Interface([
+      "function getPool(bytes32 poolId) view returns (address, uint8)",
+      "function getPoolTokens(bytes32 poolId) view returns (address[], uint256[], uint256)",
+    ]);
+    const poolInterface = new Interface([
+      "function getSwapFeePercentage() view returns (uint256)",
+      "function totalSupply() view returns (uint256)",
+      "function getAmplificationParameter() view returns (uint256, bool, uint256)",
+    ]);
+    const tokenInterface = new Interface([
+      "function symbol() view returns (string)",
+      "function decimals() view returns (uint8)",
+    ]);
+
+    // Initialize vault contract
+    const vaultAddress = await getBalancerContractAddress(
+      "20210418-vault",
+      "Vault",
+      network
+    );
+    const vault = new Contract(vaultAddress, vaultInterface, provider);
+
+    // Initialize pool contract
+    const [poolAddress] = await vault.getPool(poolId);
+    const pool = new Contract(poolAddress, poolInterface, provider);
+
+    // Fetch pool information
+    const bptTotalSupply = formatEther(await pool.totalSupply());
+    const swapFeePercentage = formatEther(await pool.getSwapFeePercentage());
+    const [ampValue, , ampPrecision] = await pool.getAmplificationParameter();
+    const amplificationParameter = ampValue.div(ampPrecision).toString();
+
+    // Fetch tokens information
+    const [tokenAddresses, tokenBalances] = await vault.getPoolTokens(poolId);
+    const numTokens = Math.min(tokenAddresses.length, tokenBalances.length);
+
+    const tokens: IStablePoolToken[] = [];
+    for (let i = 0; i < numTokens; i++) {
+      // Initialize token contract
+      const token = new Contract(tokenAddresses[i], tokenInterface, provider);
+
+      const symbol = await token.symbol();
+      const decimals = await token.decimals();
+      const balance = formatUnits(tokenBalances[i], decimals);
+
+      tokens.push({
+        address: token.address,
+        symbol,
+        balance,
+        decimals,
+      });
+    }
+
+    return new StablePool({
+      id: poolId,
+      address: poolAddress,
+      tokens,
+      bptTotalSupply,
+      swapFeePercentage,
+      amplificationParameter,
+      query,
+    });
+  }
+
   // ---------------------- Subgraph initializer ----------------------
 
-  public static async initFromRealPool(
+  public static async initFromSubgraph(
     poolId: string,
+    network = "mainnet",
     query = false,
-    blockNumber?: number,
-    testnet?: boolean
+    blockNumber?: number
   ): Promise<StablePool> {
-    const pool = await getPool(poolId, blockNumber, testnet);
+    const pool = await getPool(poolId, blockNumber, network);
     if (!pool) {
       throw new Error("Could not fetch pool data");
     }

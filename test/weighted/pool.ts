@@ -14,38 +14,21 @@ describe("WeightedPool", () => {
   let evmHelpers: Contract;
 
   before(async () => {
-    sdkPool = await WeightedPool.initFromRealPool(
+    const network = "mainnet";
+
+    sdkPool = await WeightedPool.initFromOnchain(
+      ethers.provider,
       // WETH/DAI 60/40 on Mainnet
       "0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a",
-      true,
-      Number(process.env.BLOCK_NUMBER)
+      network
     );
 
-    evmVault = await getBalancerContract("20210418-vault", "Vault", "mainnet");
+    evmVault = await getBalancerContract("20210418-vault", "Vault", network);
     evmHelpers = await getBalancerContract(
       "20210418-vault",
       "BalancerHelpers",
-      "mainnet"
+      network
     );
-
-    // For some reason, the actual on-chain swap fee differs from what is
-    // returned from the subgraph, so to make the tests pass we update the
-    // swap fee to what is on-chain
-
-    const iface = new ethers.utils.Interface([
-      "function getSwapFeePercentage() view returns (uint256)",
-    ]);
-    const rawSwapFeePercentage = await ethers.provider.call({
-      to: sdkPool.address,
-      data: iface.encodeFunctionData("getSwapFeePercentage"),
-    });
-    const swapFeePercentage = ethers.utils.formatEther(
-      iface
-        .decodeFunctionResult("getSwapFeePercentage", rawSwapFeePercentage)
-        .toString()
-    );
-
-    sdkPool.setSwapFeePercentage(swapFeePercentage);
   });
 
   describe("swapGivenIn", () => {

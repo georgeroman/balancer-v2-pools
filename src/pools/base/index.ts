@@ -25,7 +25,7 @@ export default abstract class BasePool {
   protected _address: string;
   protected _bptTotalSupply: string;
   protected _swapFeePercentage: string;
-  protected _query = false;
+  protected _query = true;
 
   // ---------------------- Getters ----------------------
 

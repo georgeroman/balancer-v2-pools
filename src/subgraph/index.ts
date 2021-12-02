@@ -3,7 +3,7 @@ import { gql, request } from "graphql-request";
 export const getPool = async (
   poolId: string,
   blockNumber?: number,
-  testnet?: boolean
+  network = "mainnet"
 ): Promise<any> => {
   const data = `
     id
@@ -41,13 +41,15 @@ export const getPool = async (
     `;
   }
 
-  const result = await request(
-    testnet
-      ? "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer-kovan-v2"
-      : "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer-v2",
-    query,
-    { poolId, blockNumber }
-  );
+  let subgraphUrl: string;
+  if (network === "mainnet") {
+    subgraphUrl =
+      "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer-v2";
+  } else {
+    subgraphUrl = `https://api.thegraph.com/subgraphs/name/balancer-labs/balancer-${network}-v2`;
+  }
+
+  const result = await request(subgraphUrl, query, { poolId, blockNumber });
 
   if (result && result.pools && result.pools.length) {
     return result.pools[0];

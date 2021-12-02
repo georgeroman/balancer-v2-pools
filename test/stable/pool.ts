@@ -14,38 +14,21 @@ describe("StablePool", () => {
   let evmHelpers: Contract;
 
   before(async () => {
-    sdkPool = await StablePool.initFromRealPool(
+    const network = "mainnet";
+
+    sdkPool = await StablePool.initFromOnchain(
+      ethers.provider,
       // DAI/USDC/USDT on Mainnet
       "0x06df3b2bbb68adc8b0e302443692037ed9f91b42000000000000000000000063",
-      true,
-      Number(process.env.BLOCK_NUMBER)
+      network
     );
 
-    evmVault = await getBalancerContract("20210418-vault", "Vault", "mainnet");
+    evmVault = await getBalancerContract("20210418-vault", "Vault", network);
     evmHelpers = await getBalancerContract(
       "20210418-vault",
       "BalancerHelpers",
-      "mainnet"
+      network
     );
-
-    // For some reason, the actual on-chain swap fee differs from what is
-    // returned from the subgraph, so to make the tests pass we update the
-    // swap fee to what is on-chain
-
-    const iface = new ethers.utils.Interface([
-      "function getSwapFeePercentage() view returns (uint256)",
-    ]);
-    const rawSwapFeePercentage = await ethers.provider.call({
-      to: sdkPool.address,
-      data: iface.encodeFunctionData("getSwapFeePercentage"),
-    });
-    const swapFeePercentage = ethers.utils.formatEther(
-      iface
-        .decodeFunctionResult("getSwapFeePercentage", rawSwapFeePercentage)
-        .toString()
-    );
-
-    sdkPool.setSwapFeePercentage(swapFeePercentage);
   });
 
   describe("swapGivenIn", () => {
@@ -153,15 +136,17 @@ describe("StablePool", () => {
 
     it("simple values", () => {
       amountsIn = {
-        DAI: "100000",
-        WETH: "500",
+        DAI: "1000",
+        USDC: "1000",
+        USDT: "1000",
       };
     });
 
     it("extreme values", () => {
       amountsIn = {
         DAI: "1",
-        WETH: "10000",
+        USDC: "10000",
+        USDT: "1000000",
       };
     });
   });
@@ -272,14 +257,16 @@ describe("StablePool", () => {
     it("simple values", () => {
       amountsOut = {
         DAI: "100000",
-        WETH: "100",
+        USDC: "100000",
+        USDT: "100000",
       };
     });
 
     it("extreme values", () => {
       amountsOut = {
         DAI: "100000000",
-        WETH: "100000000",
+        USDC: "100000000",
+        USDT: "100000000",
       };
     });
   });
