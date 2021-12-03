@@ -1,7 +1,7 @@
 // Ported from Solidity:
 // https://github.com/balancer-labs/balancer-core-v2/blob/70843e6a61ad11208c1cfabf5cfe15be216ca8d3/pkg/pool-stable/contracts/StableMath.sol
 
-import BigNumber, { bn } from "../../utils/big-number";
+import BigNumber, { bn, scale } from "../../utils/big-number";
 import * as fp from "../../utils/math/fixed-point";
 import * as math from "../../utils/math/math";
 
@@ -90,7 +90,11 @@ export const _calcOutGivenIn = (
   balances: BigNumber[],
   tokenIndexIn: number,
   tokenIndexOut: number,
-  tokenAmountIn: BigNumber
+  tokenAmountIn: BigNumber,
+  options?: {
+    swapFeePercentage: BigNumber;
+    tokenInDecimals: number;
+  }
 ): BigNumber => {
   /**************************************************************************************************************
   // outGivenIn token x for y - polynomial equation to solve                                                   //
@@ -105,6 +109,17 @@ export const _calcOutGivenIn = (
   **************************************************************************************************************/
 
   // Amount out, so we round down overall.
+
+  if (options) {
+    // Fees are subtracted before scaling
+    const scalingFactor = 18 - options.tokenInDecimals;
+    const scaledAmountIn = scale(tokenAmountIn, -scalingFactor);
+    const scaledAmountInWithoutFees = fp.sub(
+      scaledAmountIn,
+      fp.mulUp(scaledAmountIn, options.swapFeePercentage)
+    );
+    tokenAmountIn = scale(scaledAmountInWithoutFees, scalingFactor);
+  }
 
   // Given that we need to have a greater final balance out, the invariant needs to be rounded up
   const invariant = _calculateInvariant(amplificationParameter, balances, true);
@@ -131,7 +146,11 @@ export const _calcInGivenOut = (
   balances: BigNumber[],
   tokenIndexIn: number,
   tokenIndexOut: number,
-  tokenAmountOut: BigNumber
+  tokenAmountOut: BigNumber,
+  options?: {
+    swapFeePercentage: BigNumber;
+    tokenInDecimals: number;
+  }
 ): BigNumber => {
   /**************************************************************************************************************
   // inGivenOut token x for y - polynomial equation to solve                                                   //
@@ -165,6 +184,17 @@ export const _calcInGivenOut = (
     fp.sub(finalBalanceIn, balances[tokenIndexIn]),
     math.ONE
   );
+
+  if (options) {
+    // Fees are added after scaling
+    const scalingFactor = 18 - options.tokenInDecimals;
+    const scaledAmountIn = scale(amountIn, -scalingFactor);
+    const scaledAmountInWithFees = fp.divUp(
+      scaledAmountIn,
+      fp.sub(fp.ONE, options.swapFeePercentage)
+    );
+    amountIn = scale(scaledAmountInWithFees, scalingFactor);
+  }
 
   return amountIn;
 };

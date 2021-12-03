@@ -11,11 +11,16 @@ Simple SDK for simulating the exact on-chain behaviour of various Balancer v2 po
 ### Usage instructions
 
 ```typescript
+import { JsonRpcProvider } from "@ethersproject/providers";
 import { WeightedPool } from "@georgeroman/balancer-v2-pools";
 
-const pool = await WeightedPool.initFromRealPool(
-  // WETH/DAI 60/40 on Mainnet
-  "0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a"
+const provider = new JsonRpcProvider(process.env.RPC_ENDPOINT);
+
+// WETH/DAI 60/40 on Mainnet
+const pool = await WeightedPool.initFromOnchain(
+  provider,
+  "0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a",
+  "mainnet"
 );
 
 // Swap

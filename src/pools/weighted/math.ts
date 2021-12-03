@@ -1,7 +1,7 @@
 // Ported from Solidity:
 // https://github.com/balancer-labs/balancer-core-v2/blob/70843e6a61ad11208c1cfabf5cfe15be216ca8d3/pkg/pool-weighted/contracts/WeightedMath.sol
 
-import BigNumber, { bn } from "../../utils/big-number";
+import BigNumber, { bn, scale } from "../../utils/big-number";
 import * as fp from "../../utils/math/fixed-point";
 
 // Swap limits: amounts swapped may not be larger than this percentage of total balance
@@ -46,7 +46,11 @@ export const _calcOutGivenIn = (
   weightIn: BigNumber,
   balanceOut: BigNumber,
   weightOut: BigNumber,
-  amountIn: BigNumber
+  amountIn: BigNumber,
+  options?: {
+    swapFeePercentage: BigNumber;
+    tokenInDecimals: number;
+  }
 ): BigNumber => {
   /*****************************************************************************************
   // outGivenIn                                                                           //
@@ -62,6 +66,17 @@ export const _calcOutGivenIn = (
 
   // The multiplication rounds down, and the subtrahend (power) rounds up (so the base rounds up too)
   // Because bi / (bi + ai) <= 1, the exponent rounds down
+
+  if (options) {
+    // Fees are subtracted before scaling
+    const scalingFactor = 18 - options.tokenInDecimals;
+    const scaledAmountIn = scale(amountIn, -scalingFactor);
+    const scaledAmountInWithoutFees = fp.sub(
+      scaledAmountIn,
+      fp.mulUp(scaledAmountIn, options.swapFeePercentage)
+    );
+    amountIn = scale(scaledAmountInWithoutFees, scalingFactor);
+  }
 
   // Cannot exceed maximum in ratio
   if (amountIn.gt(fp.mulDown(balanceIn, MAX_IN_RATIO))) {
@@ -83,7 +98,11 @@ export const _calcInGivenOut = (
   weightIn: BigNumber,
   balanceOut: BigNumber,
   weightOut: BigNumber,
-  amountOut: BigNumber
+  amountOut: BigNumber,
+  options?: {
+    swapFeePercentage: BigNumber;
+    tokenInDecimals: number;
+  }
 ): BigNumber => {
   /*****************************************************************************************
   // inGivenOut                                                                           //
@@ -112,6 +131,17 @@ export const _calcInGivenOut = (
   const ratio = fp.sub(power, fp.ONE);
 
   let amountIn = fp.mulUp(balanceIn, ratio);
+
+  if (options) {
+    // Fees are added after scaling
+    const scalingFactor = 18 - options.tokenInDecimals;
+    const scaledAmountIn = scale(amountIn, -scalingFactor);
+    const scaledAmountInWithFees = fp.divUp(
+      scaledAmountIn,
+      fp.sub(fp.ONE, options.swapFeePercentage)
+    );
+    amountIn = scale(scaledAmountInWithFees, scalingFactor);
+  }
 
   return amountIn;
 };

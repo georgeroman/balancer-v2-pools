@@ -65,9 +65,9 @@ describe("StablePool", () => {
     it("extreme values", () => {
       tokenIn = sdkPool.tokens[0];
       tokenOut = sdkPool.tokens[1];
-      // 50% of the balance
+      // 25% of the balance
       amountIn = bn(tokenIn.balance)
-        .div(2)
+        .div(4)
         .decimalPlaces(tokenIn.decimals)
         .toString();
     });
@@ -109,9 +109,9 @@ describe("StablePool", () => {
     it("extreme values", () => {
       tokenIn = sdkPool.tokens[0];
       tokenOut = sdkPool.tokens[1];
-      // 50% of the balance
+      // 25% of the balance
       amountOut = bn(tokenOut.balance)
-        .div(2)
+        .div(4)
         .decimalPlaces(tokenOut.decimals)
         .toString();
     });

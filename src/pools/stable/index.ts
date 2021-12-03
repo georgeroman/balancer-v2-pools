@@ -188,26 +188,22 @@ export default class StablePool extends BasePool {
     const tokenIn = this._tokens[tokenIndexIn];
     const tokenOut = this._tokens[tokenIndexOut];
 
-    // Fees are subtracted before scaling
-    const amountInWithoutFees = this._subtractSwapFeeAmount(
-      amountIn,
-      tokenIn.decimals
-    );
-
     const scaledAmountOut = math._calcOutGivenIn(
       bn(this._amplificationParameter),
       this._tokens.map((t) => this._upScale(t.balance, t.decimals)),
       tokenIndexIn,
       tokenIndexOut,
-      this._upScale(amountInWithoutFees, tokenIn.decimals)
+      this._upScale(amountIn, tokenIn.decimals),
+      {
+        swapFeePercentage: this._upScale(this._swapFeePercentage, 18),
+        tokenInDecimals: tokenIn.decimals,
+      }
     );
     const amountOut = this._downScaleDown(scaledAmountOut, tokenOut.decimals);
 
     // In-place balance updates
     if (!this._query) {
-      tokenIn.balance = bn(tokenIn.balance)
-        .plus(amountInWithoutFees)
-        .toString();
+      tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
       tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
     }
 
@@ -234,25 +230,21 @@ export default class StablePool extends BasePool {
       this._tokens.map((t) => this._upScale(t.balance, t.decimals)),
       tokenIndexIn,
       tokenIndexOut,
-      this._upScale(amountOut, tokenOut.decimals)
+      this._upScale(amountOut, tokenOut.decimals),
+      {
+        swapFeePercentage: this._upScale(this._swapFeePercentage, 18),
+        tokenInDecimals: tokenIn.decimals,
+      }
     );
     const amountIn = this._downScaleUp(scaledAmountIn, tokenIn.decimals);
 
-    // Fees are added after scaling happens
-    const amountInPlusSwapFees = this._addSwapFeeAmount(
-      amountIn,
-      tokenIn.decimals
-    );
-
     // In-place balance updates
     if (!this._query) {
-      tokenIn.balance = bn(tokenIn.balance)
-        .plus(amountInPlusSwapFees)
-        .toString();
+      tokenIn.balance = bn(tokenIn.balance).plus(amountIn).toString();
       tokenOut.balance = bn(tokenOut.balance).minus(amountOut).toString();
     }
 
-    return amountInPlusSwapFees.toString();
+    return amountIn.toString();
   }
 
   // ---------------------- LP actions ----------------------
