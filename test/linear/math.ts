@@ -4,12 +4,11 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import * as sdkLinearMath from "../../src/pools/linear/math";
-import { scale } from "../../src/utils/big-number";
+import { scale, scaleAll } from "../../src/utils/big-number";
 import { deployContract, isSameResult, toEvmBn } from "../../src/utils/test";
 
 type Params = {
   fee: string;
-  rate: string;
   lowerTarget: string;
   upperTarget: string;
 };
@@ -43,7 +42,6 @@ describe("LinearMath", () => {
         toEvmBn(scale(bptSupply, 18)),
         {
           fee: toEvmBn(scale(params.fee, 18)),
-          rate: toEvmBn(scale(params.fee, 18)),
           lowerTarget: toEvmBn(scale(params.lowerTarget, 18)),
           upperTarget: toEvmBn(scale(params.upperTarget, 18)),
         }
@@ -58,7 +56,6 @@ describe("LinearMath", () => {
             scale(bptSupply, 18),
             {
               fee: scale(params.fee, 18),
-              rate: scale(params.fee, 18),
               lowerTarget: scale(params.lowerTarget, 18),
               upperTarget: scale(params.upperTarget, 18),
             }
@@ -71,12 +68,11 @@ describe("LinearMath", () => {
 
     it("simple values", () => {
       mainIn = "1";
-      mainBalance = "0";
-      wrappedBalance = "0";
-      bptSupply = "0";
+      mainBalance = "200";
+      wrappedBalance = "30";
+      bptSupply = "100";
       params = {
         fee: "0.01",
-        rate: "1",
         lowerTarget: "1000",
         upperTarget: "2000",
       };
@@ -84,12 +80,11 @@ describe("LinearMath", () => {
 
     it("complex values", () => {
       mainIn = "100";
-      mainBalance = "1";
-      wrappedBalance = "0";
-      bptSupply = "1";
+      mainBalance = "10";
+      wrappedBalance = "1000";
+      bptSupply = "10";
       params = {
         fee: "0.01",
-        rate: "1",
         lowerTarget: "1000",
         upperTarget: "2000",
       };
@@ -111,7 +106,6 @@ describe("LinearMath", () => {
         toEvmBn(scale(bptSupply, 18)),
         {
           fee: toEvmBn(scale(params.fee, 18)),
-          rate: toEvmBn(scale(params.fee, 18)),
           lowerTarget: toEvmBn(scale(params.lowerTarget, 18)),
           upperTarget: toEvmBn(scale(params.upperTarget, 18)),
         }
@@ -126,7 +120,6 @@ describe("LinearMath", () => {
             scale(bptSupply, 18),
             {
               fee: scale(params.fee, 18),
-              rate: scale(params.fee, 18),
               lowerTarget: scale(params.lowerTarget, 18),
               upperTarget: scale(params.upperTarget, 18),
             }
@@ -144,7 +137,6 @@ describe("LinearMath", () => {
       bptSupply = "110";
       params = {
         fee: "0.01",
-        rate: "1",
         lowerTarget: "1000",
         upperTarget: "2000",
       };
@@ -162,7 +154,6 @@ describe("LinearMath", () => {
         toEvmBn(scale(mainBalance, 18)),
         {
           fee: toEvmBn(scale(params.fee, 18)),
-          rate: toEvmBn(scale(params.fee, 18)),
           lowerTarget: toEvmBn(scale(params.lowerTarget, 18)),
           upperTarget: toEvmBn(scale(params.upperTarget, 18)),
         }
@@ -175,7 +166,6 @@ describe("LinearMath", () => {
             scale(mainBalance, 18),
             {
               fee: scale(params.fee, 18),
-              rate: scale(params.fee, 18),
               lowerTarget: scale(params.lowerTarget, 18),
               upperTarget: scale(params.upperTarget, 18),
             }
@@ -191,7 +181,6 @@ describe("LinearMath", () => {
       mainBalance = "500";
       params = {
         fee: "0.01",
-        rate: "1",
         lowerTarget: "1000",
         upperTarget: "2000",
       };
@@ -209,7 +198,6 @@ describe("LinearMath", () => {
         toEvmBn(scale(mainBalance, 18)),
         {
           fee: toEvmBn(scale(params.fee, 18)),
-          rate: toEvmBn(scale(params.fee, 18)),
           lowerTarget: toEvmBn(scale(params.lowerTarget, 18)),
           upperTarget: toEvmBn(scale(params.upperTarget, 18)),
         }
@@ -222,7 +210,6 @@ describe("LinearMath", () => {
             scale(mainBalance, 18),
             {
               fee: scale(params.fee, 18),
-              rate: scale(params.fee, 18),
               lowerTarget: scale(params.lowerTarget, 18),
               upperTarget: scale(params.upperTarget, 18),
             }
@@ -238,7 +225,6 @@ describe("LinearMath", () => {
       mainBalance = "600";
       params = {
         fee: "0.01",
-        rate: "1",
         lowerTarget: "1000",
         upperTarget: "2000",
       };
@@ -260,7 +246,6 @@ describe("LinearMath", () => {
         toEvmBn(scale(bptSupply, 18)),
         {
           fee: toEvmBn(scale(params.fee, 18)),
-          rate: toEvmBn(scale(params.fee, 18)),
           lowerTarget: toEvmBn(scale(params.lowerTarget, 18)),
           upperTarget: toEvmBn(scale(params.upperTarget, 18)),
         }
@@ -275,7 +260,6 @@ describe("LinearMath", () => {
             scale(bptSupply, 18),
             {
               fee: scale(params.fee, 18),
-              rate: scale(params.fee, 18),
               lowerTarget: scale(params.lowerTarget, 18),
               upperTarget: scale(params.upperTarget, 18),
             }
@@ -293,7 +277,6 @@ describe("LinearMath", () => {
       bptSupply = "1000";
       params = {
         fee: "0.01",
-        rate: "1.5",
         lowerTarget: "1000",
         upperTarget: "2000",
       };
@@ -315,7 +298,6 @@ describe("LinearMath", () => {
         toEvmBn(scale(bptSupply, 18)),
         {
           fee: toEvmBn(scale(params.fee, 18)),
-          rate: toEvmBn(scale(params.fee, 18)),
           lowerTarget: toEvmBn(scale(params.lowerTarget, 18)),
           upperTarget: toEvmBn(scale(params.upperTarget, 18)),
         }
@@ -330,7 +312,6 @@ describe("LinearMath", () => {
             scale(bptSupply, 18),
             {
               fee: scale(params.fee, 18),
-              rate: scale(params.fee, 18),
               lowerTarget: scale(params.lowerTarget, 18),
               upperTarget: scale(params.upperTarget, 18),
             }
@@ -348,7 +329,6 @@ describe("LinearMath", () => {
       bptSupply = "1000";
       params = {
         fee: "0.01",
-        rate: "1.5",
         lowerTarget: "1000",
         upperTarget: "2000",
       };
@@ -366,7 +346,6 @@ describe("LinearMath", () => {
         toEvmBn(scale(mainBalance, 18)),
         {
           fee: toEvmBn(scale(params.fee, 18)),
-          rate: toEvmBn(scale(params.fee, 18)),
           lowerTarget: toEvmBn(scale(params.lowerTarget, 18)),
           upperTarget: toEvmBn(scale(params.upperTarget, 18)),
         }
@@ -379,7 +358,6 @@ describe("LinearMath", () => {
             scale(mainBalance, 18),
             {
               fee: scale(params.fee, 18),
-              rate: scale(params.fee, 18),
               lowerTarget: scale(params.lowerTarget, 18),
               upperTarget: scale(params.upperTarget, 18),
             }
@@ -395,7 +373,6 @@ describe("LinearMath", () => {
       mainBalance = "500";
       params = {
         fee: "0.01",
-        rate: "1",
         lowerTarget: "1000",
         upperTarget: "2000",
       };
@@ -413,7 +390,6 @@ describe("LinearMath", () => {
         toEvmBn(scale(mainBalance, 18)),
         {
           fee: toEvmBn(scale(params.fee, 18)),
-          rate: toEvmBn(scale(params.fee, 18)),
           lowerTarget: toEvmBn(scale(params.lowerTarget, 18)),
           upperTarget: toEvmBn(scale(params.upperTarget, 18)),
         }
@@ -426,7 +402,6 @@ describe("LinearMath", () => {
             scale(mainBalance, 18),
             {
               fee: scale(params.fee, 18),
-              rate: scale(params.fee, 18),
               lowerTarget: scale(params.lowerTarget, 18),
               upperTarget: scale(params.upperTarget, 18),
             }
@@ -442,7 +417,6 @@ describe("LinearMath", () => {
       mainBalance = "500";
       params = {
         fee: "0.01",
-        rate: "1.5",
         lowerTarget: "1000",
         upperTarget: "2000",
       };
@@ -464,7 +438,6 @@ describe("LinearMath", () => {
         toEvmBn(scale(bptSupply, 18)),
         {
           fee: toEvmBn(scale(params.fee, 18)),
-          rate: toEvmBn(scale(params.fee, 18)),
           lowerTarget: toEvmBn(scale(params.lowerTarget, 18)),
           upperTarget: toEvmBn(scale(params.upperTarget, 18)),
         }
@@ -479,7 +452,6 @@ describe("LinearMath", () => {
             scale(bptSupply, 18),
             {
               fee: scale(params.fee, 18),
-              rate: scale(params.fee, 18),
               lowerTarget: scale(params.lowerTarget, 18),
               upperTarget: scale(params.upperTarget, 18),
             }
@@ -497,7 +469,6 @@ describe("LinearMath", () => {
       bptSupply = "150";
       params = {
         fee: "0.01",
-        rate: "1",
         lowerTarget: "1000",
         upperTarget: "2000",
       };
@@ -519,7 +490,6 @@ describe("LinearMath", () => {
         toEvmBn(scale(bptSupply, 18)),
         {
           fee: toEvmBn(scale(params.fee, 18)),
-          rate: toEvmBn(scale(params.fee, 18)),
           lowerTarget: toEvmBn(scale(params.lowerTarget, 18)),
           upperTarget: toEvmBn(scale(params.upperTarget, 18)),
         }
@@ -534,7 +504,6 @@ describe("LinearMath", () => {
             scale(bptSupply, 18),
             {
               fee: scale(params.fee, 18),
-              rate: scale(params.fee, 18),
               lowerTarget: scale(params.lowerTarget, 18),
               upperTarget: scale(params.upperTarget, 18),
             }
@@ -552,7 +521,6 @@ describe("LinearMath", () => {
       bptSupply = "150";
       params = {
         fee: "0.01",
-        rate: "1.3",
         lowerTarget: "1000",
         upperTarget: "2000",
       };
@@ -574,7 +542,6 @@ describe("LinearMath", () => {
         toEvmBn(scale(bptSupply, 18)),
         {
           fee: toEvmBn(scale(params.fee, 18)),
-          rate: toEvmBn(scale(params.fee, 18)),
           lowerTarget: toEvmBn(scale(params.lowerTarget, 18)),
           upperTarget: toEvmBn(scale(params.upperTarget, 18)),
         }
@@ -589,7 +556,6 @@ describe("LinearMath", () => {
             scale(bptSupply, 18),
             {
               fee: scale(params.fee, 18),
-              rate: scale(params.fee, 18),
               lowerTarget: scale(params.lowerTarget, 18),
               upperTarget: scale(params.upperTarget, 18),
             }
@@ -607,7 +573,6 @@ describe("LinearMath", () => {
       bptSupply = "250";
       params = {
         fee: "0.01",
-        rate: "1.2",
         lowerTarget: "1000",
         upperTarget: "2000",
       };
@@ -629,7 +594,6 @@ describe("LinearMath", () => {
         toEvmBn(scale(bptSupply, 18)),
         {
           fee: toEvmBn(scale(params.fee, 18)),
-          rate: toEvmBn(scale(params.fee, 18)),
           lowerTarget: toEvmBn(scale(params.lowerTarget, 18)),
           upperTarget: toEvmBn(scale(params.upperTarget, 18)),
         }
@@ -644,7 +608,6 @@ describe("LinearMath", () => {
             scale(bptSupply, 18),
             {
               fee: scale(params.fee, 18),
-              rate: scale(params.fee, 18),
               lowerTarget: scale(params.lowerTarget, 18),
               upperTarget: scale(params.upperTarget, 18),
             }
@@ -662,10 +625,45 @@ describe("LinearMath", () => {
       bptSupply = "250";
       params = {
         fee: "0.01",
-        rate: "1",
         lowerTarget: "1000",
         upperTarget: "2000",
       };
+    });
+  });
+
+  describe("_calcTokensOutGivenExactBptIn", () => {
+    let balances: string[];
+    let bptAmountIn: string;
+    let bptTotalSupply: string;
+    let bptIndex: number;
+
+    afterEach(async () => {
+      const evmExecution = evmLinearMath._calcTokensOutGivenExactBptIn(
+        scaleAll(balances, 18).map(toEvmBn),
+        toEvmBn(scale(bptAmountIn, 18)),
+        toEvmBn(scale(bptTotalSupply, 18)),
+        bptIndex
+      );
+
+      const sdkExecution = new Promise((resolve) =>
+        resolve(
+          sdkLinearMath._calcTokensOutGivenExactBptIn(
+            scaleAll(balances, 18),
+            scale(bptAmountIn, 18),
+            scale(bptTotalSupply, 18),
+            bptIndex
+          )
+        )
+      );
+
+      expect(await isSameResult(sdkExecution, evmExecution)).to.be.true;
+    });
+
+    it("simple values", () => {
+      balances = ["100", "200", "300"];
+      bptAmountIn = "10";
+      bptTotalSupply = "80";
+      bptIndex = 1;
     });
   });
 });

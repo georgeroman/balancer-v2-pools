@@ -1,7 +1,8 @@
 // Flattened from:
-// https://github.com/balancer-labs/balancer-v2-monorepo/blob/88a14eb623f6a22ef3f1afc5a8c49ebfa7eeceed/pkg/pool-linear/contracts/LinearMath.sol
+// https://github.com/balancer-labs/balancer-v2-monorepo/blob/78883ab1555a0588c9388128418130d9d5e44aeb/pkg/pool-linear/contracts/LinearMath.sol
 // * internal functions from `LinearMath` were made public for ease of testing
 // * add `ABIEncoderV2` pragma in `LinearMath` to remove compiler errors
+// * made `LinearMath` a contract to be able to call functions on it directly
 
 // SPDX-License-Identifier: GPL-3.0-or-later AND MIT
 // File: @balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol
@@ -172,10 +173,13 @@ library Errors {
     uint256 internal constant UNHANDLED_EXIT_KIND = 336;
     uint256 internal constant UNAUTHORIZED_EXIT = 337;
     uint256 internal constant MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 338;
-    uint256 internal constant UNHANDLED_BY_INVESTMENT_POOL = 339;
+    uint256 internal constant UNHANDLED_BY_MANAGED_POOL = 339;
     uint256 internal constant UNHANDLED_BY_PHANTOM_POOL = 340;
     uint256 internal constant TOKEN_DOES_NOT_HAVE_RATE_PROVIDER = 341;
     uint256 internal constant INVALID_INITIALIZATION = 342;
+    uint256 internal constant OUT_OF_NEW_TARGET_RANGE = 343;
+    uint256 internal constant UNAUTHORIZED_OPERATION = 344;
+    uint256 internal constant UNINITIALIZED_POOL_CONTROLLER = 345;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
@@ -209,6 +213,9 @@ library Errors {
     uint256 internal constant CODE_DEPLOYMENT_FAILED = 428;
     uint256 internal constant CALL_TO_NON_CONTRACT = 429;
     uint256 internal constant LOW_LEVEL_CALL_FAILED = 430;
+    uint256 internal constant NOT_PAUSED = 431;
+    uint256 internal constant ADDRESS_ALREADY_ALLOWLISTED = 432;
+    uint256 internal constant ADDRESS_NOT_ALLOWLISTED = 433;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;
@@ -253,9 +260,16 @@ pragma solidity ^0.7.0;
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow checks.
- * Adapted from OpenZeppelin's SafeMath library
+ * Adapted from OpenZeppelin's SafeMath library.
  */
 library Math {
+    /**
+     * @dev Returns the absolute value of a signed integer.
+     */
+    function abs(int256 a) internal pure returns (uint256) {
+        return a > 0 ? uint256(a) : uint256(-a);
+    }
+
     /**
      * @dev Returns the addition of two unsigned integers of 256 bits, reverting on overflow.
      */
@@ -1009,17 +1023,39 @@ library FixedPoint {
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-
 pragma experimental ABIEncoderV2;
+
+// These functions start with an underscore, as if they were part of a contract and not a library. At some point this
+// should be fixed.
+// solhint-disable private-vars-leading-underscore
 
 contract LinearMath {
     using FixedPoint for uint256;
 
-    // solhint-disable private-vars-leading-underscore
+    // A thorough derivation of the formulas and derivations found here exceeds the scope of this file, so only
+    // introductory notions will be presented.
+
+    // A Linear Pool holds three tokens: the main token, the wrapped token, and the Pool share token (BPT). It is
+    // possible to exchange any of these tokens for any of the other two (so we have three trading pairs) in both
+    // directions (the first token of each pair can be bought or sold for the second) and by specifying either the input
+    // or output amount (typically referred to as 'given in' or 'given out'). A full description thus requires
+    // 3*2*2 = 12 functions.
+    // Wrapped tokens have a known, trusted exchange rate to main tokens. All functions here assume such a rate has
+    // already been applied, meaning main and wrapped balances can be compared as they are both expressed in the same
+    // units (those of main token).
+    // Additionally, Linear Pools feature a lower and upper target that represent the desired range of values for the
+    // main token balance. Any action that moves the main balance away from this range is charged a proportional fee,
+    // and any action that moves it towards this range is incentivized by paying the actor using these collected fees.
+    // The collected fees are not stored in a separate data structure: they are a function of the current main balance,
+    // targets and fee percentage. The main balance sans fees is known as the 'nominal balance', which is always smaller
+    // than the real balance except when the real balance is within the targets.
+    // The rule under which Linear Pools conduct trades between main and wrapped tokens is by keeping the sum of nominal
+    // main balance and wrapped balance constant: this value is known as the 'invariant'. BPT is backed by nominal
+    // reserves, meaning its supply is proportional to the invariant. As the wrapped token appreciates in value and its
+    // exchange rate to the main token increases, so does the invariant and thus the value of BPT (in main token units).
 
     struct Params {
         uint256 fee;
-        uint256 rate;
         uint256 lowerTarget;
         uint256 upperTarget;
     }
@@ -1034,18 +1070,17 @@ contract LinearMath {
         // Amount out, so we round down overall.
 
         if (bptSupply == 0) {
+            // BPT typically grows in the same ratio the invariant does. The first time liquidity is added however, the
+            // BPT supply is initialized to equal the invariant (which in this case is just the nominal main balance as
+            // there is no wrapped balance).
             return _toNominal(mainIn, params);
         }
 
         uint256 previousNominalMain = _toNominal(mainBalance, params);
         uint256 afterNominalMain = _toNominal(mainBalance.add(mainIn), params);
         uint256 deltaNominalMain = afterNominalMain.sub(previousNominalMain);
-        uint256 invariant = _calcInvariantUp(
-            previousNominalMain,
-            wrappedBalance,
-            params
-        );
-        return bptSupply.mulDown(deltaNominalMain).divDown(invariant);
+        uint256 invariant = _calcInvariant(previousNominalMain, wrappedBalance);
+        return Math.divDown(Math.mul(bptSupply, deltaNominalMain), invariant);
     }
 
     function _calcBptInPerMainOut(
@@ -1060,12 +1095,8 @@ contract LinearMath {
         uint256 previousNominalMain = _toNominal(mainBalance, params);
         uint256 afterNominalMain = _toNominal(mainBalance.sub(mainOut), params);
         uint256 deltaNominalMain = previousNominalMain.sub(afterNominalMain);
-        uint256 invariant = _calcInvariantDown(
-            previousNominalMain,
-            wrappedBalance,
-            params
-        );
-        return bptSupply.mulUp(deltaNominalMain).divUp(invariant);
+        uint256 invariant = _calcInvariant(previousNominalMain, wrappedBalance);
+        return Math.divUp(Math.mul(bptSupply, deltaNominalMain), invariant);
     }
 
     function _calcWrappedOutPerMainIn(
@@ -1077,8 +1108,7 @@ contract LinearMath {
 
         uint256 previousNominalMain = _toNominal(mainBalance, params);
         uint256 afterNominalMain = _toNominal(mainBalance.add(mainIn), params);
-        uint256 deltaNominalMain = afterNominalMain.sub(previousNominalMain);
-        return deltaNominalMain.divDown(params.rate);
+        return afterNominalMain.sub(previousNominalMain);
     }
 
     function _calcWrappedInPerMainOut(
@@ -1090,8 +1120,7 @@ contract LinearMath {
 
         uint256 previousNominalMain = _toNominal(mainBalance, params);
         uint256 afterNominalMain = _toNominal(mainBalance.sub(mainOut), params);
-        uint256 deltaNominalMain = previousNominalMain.sub(afterNominalMain);
-        return deltaNominalMain.divUp(params.rate);
+        return previousNominalMain.sub(afterNominalMain);
     }
 
     function _calcMainInPerBptOut(
@@ -1104,16 +1133,18 @@ contract LinearMath {
         // Amount in, so we round up overall.
 
         if (bptSupply == 0) {
+            // BPT typically grows in the same ratio the invariant does. The first time liquidity is added however, the
+            // BPT supply is initialized to equal the invariant (which in this case is just the nominal main balance as
+            // there is no wrapped balance).
             return _fromNominal(bptOut, params);
         }
 
         uint256 previousNominalMain = _toNominal(mainBalance, params);
-        uint256 invariant = _calcInvariantUp(
-            previousNominalMain,
-            wrappedBalance,
-            params
+        uint256 invariant = _calcInvariant(previousNominalMain, wrappedBalance);
+        uint256 deltaNominalMain = Math.divUp(
+            Math.mul(invariant, bptOut),
+            bptSupply
         );
-        uint256 deltaNominalMain = invariant.mulUp(bptOut).divUp(bptSupply);
         uint256 afterNominalMain = previousNominalMain.add(deltaNominalMain);
         uint256 newMainBalance = _fromNominal(afterNominalMain, params);
         return newMainBalance.sub(mainBalance);
@@ -1129,12 +1160,11 @@ contract LinearMath {
         // Amount out, so we round down overall.
 
         uint256 previousNominalMain = _toNominal(mainBalance, params);
-        uint256 invariant = _calcInvariantDown(
-            previousNominalMain,
-            wrappedBalance,
-            params
+        uint256 invariant = _calcInvariant(previousNominalMain, wrappedBalance);
+        uint256 deltaNominalMain = Math.divDown(
+            Math.mul(invariant, bptIn),
+            bptSupply
         );
-        uint256 deltaNominalMain = invariant.mulDown(bptIn).divDown(bptSupply);
         uint256 afterNominalMain = previousNominalMain.sub(deltaNominalMain);
         uint256 newMainBalance = _fromNominal(afterNominalMain, params);
         return mainBalance.sub(newMainBalance);
@@ -1148,8 +1178,7 @@ contract LinearMath {
         // Amount out, so we round down overall.
 
         uint256 previousNominalMain = _toNominal(mainBalance, params);
-        uint256 deltaNominalMain = wrappedIn.mulDown(params.rate);
-        uint256 afterNominalMain = previousNominalMain.sub(deltaNominalMain);
+        uint256 afterNominalMain = previousNominalMain.sub(wrappedIn);
         uint256 newMainBalance = _fromNominal(afterNominalMain, params);
         return mainBalance.sub(newMainBalance);
     }
@@ -1162,8 +1191,7 @@ contract LinearMath {
         // Amount in, so we round up overall.
 
         uint256 previousNominalMain = _toNominal(mainBalance, params);
-        uint256 deltaNominalMain = wrappedOut.mulUp(params.rate);
-        uint256 afterNominalMain = previousNominalMain.add(deltaNominalMain);
+        uint256 afterNominalMain = previousNominalMain.add(wrappedOut);
         uint256 newMainBalance = _fromNominal(afterNominalMain, params);
         return newMainBalance.sub(mainBalance);
     }
@@ -1178,25 +1206,20 @@ contract LinearMath {
         // Amount out, so we round down overall.
 
         if (bptSupply == 0) {
-            // Return nominal DAI
-            return wrappedIn.mulDown(params.rate);
+            // BPT typically grows in the same ratio the invariant does. The first time liquidity is added however, the
+            // BPT supply is initialized to equal the invariant (which in this case is just the wrapped balance as
+            // there is no main balance).
+            return wrappedIn;
         }
 
         uint256 nominalMain = _toNominal(mainBalance, params);
-        uint256 previousInvariant = _calcInvariantUp(
-            nominalMain,
-            wrappedBalance,
-            params
-        );
+        uint256 previousInvariant = _calcInvariant(nominalMain, wrappedBalance);
 
         uint256 newWrappedBalance = wrappedBalance.add(wrappedIn);
-        uint256 newInvariant = _calcInvariantDown(
-            nominalMain,
-            newWrappedBalance,
-            params
-        );
+        uint256 newInvariant = _calcInvariant(nominalMain, newWrappedBalance);
 
-        uint256 newBptBalance = bptSupply.mulDown(newInvariant).divDown(
+        uint256 newBptBalance = Math.divDown(
+            Math.mul(bptSupply, newInvariant),
             previousInvariant
         );
 
@@ -1213,20 +1236,13 @@ contract LinearMath {
         // Amount in, so we round up overall.
 
         uint256 nominalMain = _toNominal(mainBalance, params);
-        uint256 previousInvariant = _calcInvariantUp(
-            nominalMain,
-            wrappedBalance,
-            params
-        );
+        uint256 previousInvariant = _calcInvariant(nominalMain, wrappedBalance);
 
         uint256 newWrappedBalance = wrappedBalance.sub(wrappedOut);
-        uint256 newInvariant = _calcInvariantDown(
-            nominalMain,
-            newWrappedBalance,
-            params
-        );
+        uint256 newInvariant = _calcInvariant(nominalMain, newWrappedBalance);
 
-        uint256 newBptBalance = bptSupply.mulDown(newInvariant).divDown(
+        uint256 newBptBalance = Math.divDown(
+            Math.mul(bptSupply, newInvariant),
             previousInvariant
         );
 
@@ -1243,23 +1259,19 @@ contract LinearMath {
         // Amount in, so we round up overall.
 
         if (bptSupply == 0) {
-            // Return nominal DAI
-            return bptOut.divUp(params.rate);
+            // BPT typically grows in the same ratio the invariant does. The first time liquidity is added however, the
+            // BPT supply is initialized to equal the invariant (which in this case is just the wrapped balance as
+            // there is no main balance).
+            return bptOut;
         }
 
         uint256 nominalMain = _toNominal(mainBalance, params);
-        uint256 previousInvariant = _calcInvariantUp(
-            nominalMain,
-            wrappedBalance,
-            params
-        );
+        uint256 previousInvariant = _calcInvariant(nominalMain, wrappedBalance);
 
         uint256 newBptBalance = bptSupply.add(bptOut);
-        uint256 newWrappedBalance = newBptBalance
-            .divUp(bptSupply)
-            .mulUp(previousInvariant)
-            .sub(nominalMain)
-            .divUp(params.rate);
+        uint256 newWrappedBalance = Math
+            .divUp(Math.mul(newBptBalance, previousInvariant), bptSupply)
+            .sub(nominalMain);
 
         return newWrappedBalance.sub(wrappedBalance);
     }
@@ -1274,76 +1286,94 @@ contract LinearMath {
         // Amount out, so we round down overall.
 
         uint256 nominalMain = _toNominal(mainBalance, params);
-        uint256 previousInvariant = _calcInvariantUp(
-            nominalMain,
-            wrappedBalance,
-            params
-        );
+        uint256 previousInvariant = _calcInvariant(nominalMain, wrappedBalance);
 
         uint256 newBptBalance = bptSupply.sub(bptIn);
-        uint256 newWrappedBalance = newBptBalance
-            .divUp(bptSupply)
-            .mulUp(previousInvariant)
-            .sub(nominalMain)
-            .divUp(params.rate);
+        uint256 newWrappedBalance = Math
+            .divUp(Math.mul(newBptBalance, previousInvariant), bptSupply)
+            .sub(nominalMain);
 
         return wrappedBalance.sub(newWrappedBalance);
     }
 
-    function _calcInvariantUp(
-        uint256 nominalMainBalance,
-        uint256 wrappedBalance,
-        Params memory params
-    ) internal pure returns (uint256) {
-        return nominalMainBalance.add(wrappedBalance.mulUp(params.rate));
-    }
-
-    function _calcInvariantDown(
-        uint256 nominalMainBalance,
-        uint256 wrappedBalance,
-        Params memory params
-    ) internal pure returns (uint256) {
-        return nominalMainBalance.add(wrappedBalance.mulDown(params.rate));
-    }
-
-    function _toNominal(uint256 amount, Params memory params)
-        internal
+    function _calcInvariant(uint256 nominalMainBalance, uint256 wrappedBalance)
+        public
         pure
         returns (uint256)
     {
-        if (amount < (FixedPoint.ONE - params.fee).mulUp(params.lowerTarget)) {
-            return amount.divUp(FixedPoint.ONE - params.fee);
-        } else if (
-            amount <
-            (params.upperTarget - (params.fee.mulUp(params.lowerTarget)))
-        ) {
-            return amount.add(params.fee.mulUp(params.lowerTarget));
+        return nominalMainBalance.add(wrappedBalance);
+    }
+
+    function _toNominal(uint256 real, Params memory params)
+        public
+        pure
+        returns (uint256)
+    {
+        // Fees are always rounded down: either direction would work but we need to be consistent, and rounding down
+        // uses less gas.
+
+        if (real < params.lowerTarget) {
+            uint256 fees = (params.lowerTarget - real).mulDown(params.fee);
+            return real.sub(fees);
+        } else if (real <= params.upperTarget) {
+            return real;
         } else {
-            return
-                amount
-                    .add(
-                        (params.lowerTarget + params.upperTarget).mulUp(
-                            params.fee
-                        )
-                    )
-                    .divUp(FixedPoint.ONE + params.fee);
+            uint256 fees = (real - params.upperTarget).mulDown(params.fee);
+            return real.sub(fees);
         }
     }
 
     function _fromNominal(uint256 nominal, Params memory params)
-        internal
+        public
         pure
         returns (uint256)
     {
+        // Since real = nominal + fees, rounding down fees is equivalent to rounding down real.
+
         if (nominal < params.lowerTarget) {
-            return nominal.mulUp(FixedPoint.ONE - params.fee);
-        } else if (nominal < params.upperTarget) {
-            return nominal.sub(params.fee.mulUp(params.lowerTarget));
-        } else {
             return
-                nominal.mulUp(FixedPoint.ONE + params.fee).sub(
-                    params.fee.mulUp(params.lowerTarget + params.upperTarget)
+                (nominal.add(params.fee.mulDown(params.lowerTarget))).divDown(
+                    FixedPoint.ONE.add(params.fee)
                 );
+        } else if (nominal <= params.upperTarget) {
+            return nominal;
+        } else {
+            return (
+                nominal.sub(params.fee.mulDown(params.upperTarget)).divDown(
+                    FixedPoint.ONE.sub(params.fee)
+                )
+            );
         }
+    }
+
+    function _calcTokensOutGivenExactBptIn(
+        uint256[] memory balances,
+        uint256 bptAmountIn,
+        uint256 bptTotalSupply,
+        uint256 bptIndex
+    ) public pure returns (uint256[] memory) {
+        /**********************************************************************************************
+        // exactBPTInForTokensOut                                                                    //
+        // (per token)                                                                               //
+        // aO = tokenAmountOut             /        bptIn         \                                  //
+        // b = tokenBalance      a0 = b * | ---------------------  |                                 //
+        // bptIn = bptAmountIn             \     bptTotalSupply    /                                 //
+        // bpt = bptTotalSupply                                                                      //
+        **********************************************************************************************/
+
+        // Since we're computing an amount out, we round down overall. This means rounding down on both the
+        // multiplication and division.
+
+        uint256 bptRatio = bptAmountIn.divDown(bptTotalSupply);
+
+        uint256[] memory amountsOut = new uint256[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            // BPT is skipped as those tokens are not the LPs, but rather the preminted and undistributed amount.
+            if (i != bptIndex) {
+                amountsOut[i] = balances[i].mulDown(bptRatio);
+            }
+        }
+
+        return amountsOut;
     }
 }
