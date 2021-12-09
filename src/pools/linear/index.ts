@@ -90,7 +90,6 @@ export default class LinearPool extends BasePool {
           this.MAX_TOKEN_BALANCE.minus(this._bptToken.balance),
           {
             fee: this._upScale(this._swapFeePercentage, 18),
-            rate: this._upScale("1", 18),
             lowerTarget: this._upScale(this._lowerTarget, 18),
             upperTarget: this._upScale(this._upperTarget, 18),
           }
@@ -107,7 +106,6 @@ export default class LinearPool extends BasePool {
           this.MAX_TOKEN_BALANCE.minus(this._bptToken.balance),
           {
             fee: this._upScale(this._swapFeePercentage, 18),
-            rate: this._upScale("1", 18),
             lowerTarget: this._upScale(this._lowerTarget, 18),
             upperTarget: this._upScale(this._upperTarget, 18),
           }
@@ -122,7 +120,6 @@ export default class LinearPool extends BasePool {
           this._upScale(this._mainToken.balance, this._mainToken.decimals),
           {
             fee: this._upScale(this._swapFeePercentage, 18),
-            rate: this._upScale("1", 18),
             lowerTarget: this._upScale(this._lowerTarget, 18),
             upperTarget: this._upScale(this._upperTarget, 18),
           }
@@ -139,7 +136,6 @@ export default class LinearPool extends BasePool {
           this.MAX_TOKEN_BALANCE.minus(this._bptToken.balance),
           {
             fee: this._upScale(this._swapFeePercentage, 18),
-            rate: this._upScale("1", 18),
             lowerTarget: this._upScale(this._lowerTarget, 18),
             upperTarget: this._upScale(this._upperTarget, 18),
           }
@@ -154,7 +150,6 @@ export default class LinearPool extends BasePool {
           this._upScale(this._mainToken.balance, this._mainToken.decimals),
           {
             fee: this._upScale(this._swapFeePercentage, 18),
-            rate: this._upScale("1", 18),
             lowerTarget: this._upScale(this._lowerTarget, 18),
             upperTarget: this._upScale(this._upperTarget, 18),
           }
@@ -171,7 +166,6 @@ export default class LinearPool extends BasePool {
           this.MAX_TOKEN_BALANCE.minus(this._bptToken.balance),
           {
             fee: this._upScale(this._swapFeePercentage, 18),
-            rate: this._upScale("1", 18),
             lowerTarget: this._upScale(this._lowerTarget, 18),
             upperTarget: this._upScale(this._upperTarget, 18),
           }
@@ -223,7 +217,6 @@ export default class LinearPool extends BasePool {
           this.MAX_TOKEN_BALANCE.minus(this._bptToken.balance),
           {
             fee: this._upScale(this._swapFeePercentage, 18),
-            rate: this._upScale("1", 18),
             lowerTarget: this._upScale(this._lowerTarget, 18),
             upperTarget: this._upScale(this._upperTarget, 18),
           }
@@ -240,7 +233,6 @@ export default class LinearPool extends BasePool {
           this.MAX_TOKEN_BALANCE.minus(this._bptToken.balance),
           {
             fee: this._upScale(this._swapFeePercentage, 18),
-            rate: this._upScale("1", 18),
             lowerTarget: this._upScale(this._lowerTarget, 18),
             upperTarget: this._upScale(this._upperTarget, 18),
           }
@@ -255,7 +247,6 @@ export default class LinearPool extends BasePool {
           this._upScale(this._mainToken.balance, this._mainToken.decimals),
           {
             fee: this._upScale(this._swapFeePercentage, 18),
-            rate: this._upScale("1", 18),
             lowerTarget: this._upScale(this._lowerTarget, 18),
             upperTarget: this._upScale(this._upperTarget, 18),
           }
@@ -272,7 +263,6 @@ export default class LinearPool extends BasePool {
           this.MAX_TOKEN_BALANCE.minus(this._bptToken.balance),
           {
             fee: this._upScale(this._swapFeePercentage, 18),
-            rate: this._upScale("1", 18),
             lowerTarget: this._upScale(this._lowerTarget, 18),
             upperTarget: this._upScale(this._upperTarget, 18),
           }
@@ -287,7 +277,6 @@ export default class LinearPool extends BasePool {
           this._upScale(this._mainToken.balance, this._mainToken.decimals),
           {
             fee: this._upScale(this._swapFeePercentage, 18),
-            rate: this._upScale("1", 18),
             lowerTarget: this._upScale(this._lowerTarget, 18),
             upperTarget: this._upScale(this._upperTarget, 18),
           }
@@ -304,7 +293,6 @@ export default class LinearPool extends BasePool {
           this.MAX_TOKEN_BALANCE.minus(this._bptToken.balance),
           {
             fee: this._upScale(this._swapFeePercentage, 18),
-            rate: this._upScale("1", 18),
             lowerTarget: this._upScale(this._lowerTarget, 18),
             upperTarget: this._upScale(this._upperTarget, 18),
           }
