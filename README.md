@@ -10,7 +10,7 @@ Simple SDK for simulating the exact on-chain behaviour of various Balancer v2 po
 
 ### Install instructions
 
-In order to keep things as lean as possible, all dependencies of this package are marked as peer dependencies. In order to only use the math functions provided by this package (eg. `WeightedMath`, `StableMath`, `LinearMath`), it's not required to install any of these peer dependencies. However, for using the high-level pool classes/helpers all peer dependencies must get installed (eg. via [npm-install-peers](https://www.npmjs.com/package/npm-install-peers)).
+In order to keep things as lean as possible, all dependencies of this package are marked as peer dependencies. In order to only use the math functions provided by this package (eg. `WeightedMath`, `StableMath`, `LinearMath`), it's not required to install any of these peer dependencies. However, for using the high-level pool classes/helpers all peer dependencies must get installed (eg. via [npm-install-peers](https://www.npmjs.com/package/npm-install-peers)). This might be inconvenient, but this SDK prioritizes specific usages (eg. Balancer's SOR) which need to be as lightweight as possible.
 
 ### Usage instructions
 
