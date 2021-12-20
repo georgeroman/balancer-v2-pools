@@ -1,9 +1,10 @@
 {
   "name": "@georgeroman/balancer-v2-pools",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "scripts": {
     "prepublishOnly": "tsc",
-    "test": "hardhat test"
+    "test": "hardhat test",
+    "postinstall": "npm-install-peers"
   },
   "keywords": [
     "balancer",
@@ -24,10 +25,11 @@
     "dotenv": "^10.0.0",
     "ethereum-waffle": "^3.3.0",
     "hardhat": "^2.3.0",
+    "npm-install-peers": "^1.2.2",
     "ts-node": "^10.0.0",
     "typescript": "^4.2.4"
   },
-  "optionalDependencies": {
+  "peerDependencies": {
     "@balancer-labs/v2-deployments": "^2.1.3",
     "ethers": "^5.2.0",
     "graphql": "^15.5.0",

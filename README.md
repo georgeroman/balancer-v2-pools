@@ -8,6 +8,10 @@ Simple SDK for simulating the exact on-chain behaviour of various Balancer v2 po
 
 [![NPM](https://nodei.co/npm/@georgeroman/balancer-v2-pools.png?mini=true)](https://www.npmjs.com/package/@georgeroman/balancer-v2-pools)
 
+### Install instructions
+
+In order to keep things as lean as possible, all dependencies of this package are marked as peer dependencies. In order to only use the math functions provided by this package (eg. `WeightedMath`, `StableMath`, `LinearMath`), it's not required to install any of these peer dependencies. However, for using the high-level pool classes/helpers all peer dependencies must get installed (eg. via [npm-install-peers](https://www.npmjs.com/package/npm-install-peers)).
+
 ### Usage instructions
 
 ```typescript
