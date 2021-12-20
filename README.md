@@ -10,18 +10,19 @@ Simple SDK for simulating the exact on-chain behaviour of various Balancer v2 po
 
 ### Install instructions
 
-In order to keep things as lean as possible, all dependencies of this package are marked as peer dependencies. In order to only use the math functions provided by this package (eg. `WeightedMath`, `StableMath`, `LinearMath`), it's not required to install any of these peer dependencies. However, for using the high-level pool classes/helpers all peer dependencies must get installed (eg. via [npm-install-peers](https://www.npmjs.com/package/npm-install-peers)). This might be inconvenient, but this SDK prioritizes specific usages (eg. Balancer's SOR) which need to be as lightweight as possible.
+The SDK tries to be as lean as possible in order to prioritize certain critical usages (such as Balancer's SOR). For this reason, it only provides the bare-minimum for simulating Balancer pools off-chain. However, higher-level constructs (like initializing pools directly from on-chain data or the official Balancer subgraph) are still available. In order to be able to use these, make sure to install any peer dependencies of this package (eg. via [npm-install-peers](https://www.npmjs.com/package/npm-install-peers)).
 
 ### Usage instructions
 
 ```typescript
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { WeightedPool } from "@georgeroman/balancer-v2-pools";
+import { initFromOnchain } from "@georgeroman/balancer-v2-pools/dist/src/initializers/weighted";
 
 const provider = new JsonRpcProvider(process.env.RPC_ENDPOINT);
 
 // WETH/DAI 60/40 on Mainnet
-const pool = await WeightedPool.initFromOnchain(
+const pool = await initFromOnchain(
   provider,
   "0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a",
   "mainnet"

@@ -3,6 +3,7 @@ import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
 
+import { initFromOnchain } from "../../src/initializers/stable";
 import StablePool, { IStablePoolToken } from "../../src/pools/stable";
 import { bn } from "../../src/utils/big-number";
 import { isSameResult } from "../../src/utils/test";
@@ -16,7 +17,7 @@ describe("StablePool", () => {
   before(async () => {
     const network = "mainnet";
 
-    sdkPool = await StablePool.initFromOnchain(
+    sdkPool = await initFromOnchain(
       ethers.provider,
       // DAI/USDC/USDT on Mainnet
       "0x06df3b2bbb68adc8b0e302443692037ed9f91b42000000000000000000000063",

@@ -3,6 +3,7 @@ import { expect } from "chai";
 import { Contract } from "ethers";
 import { ethers } from "hardhat";
 
+import { initFromOnchain } from "../../src/initializers/weighted";
 import WeightedPool, { IWeightedPoolToken } from "../../src/pools/weighted";
 import { bn } from "../../src/utils/big-number";
 import { isSameResult } from "../../src/utils/test";
@@ -16,7 +17,7 @@ describe("WeightedPool", () => {
   before(async () => {
     const network = "mainnet";
 
-    sdkPool = await WeightedPool.initFromOnchain(
+    sdkPool = await initFromOnchain(
       ethers.provider,
       // WETH/DAI 60/40 on Mainnet
       "0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a",
